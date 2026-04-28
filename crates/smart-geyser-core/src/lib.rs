@@ -15,10 +15,14 @@
 //! (`smart-geyser-spec-v5_1.md`, §1).
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+pub mod decision_engine;
+pub mod event_detector;
 pub mod heat_calc;
 pub mod models;
+pub mod pattern_store;
 pub mod provider;
 pub mod pv_provider;
+pub mod shared_state;
 pub mod system;
 
 // Re-export the public surface so callers can write

@@ -28,8 +28,8 @@ All cargo/rustc/etc. commands run **inside the dev container**, never on the hos
 - [x] 1.4 Add dev-dependencies: `tokio` (for async tests), `pretty_assertions`, `rstest`
 - [x] 1.5 Set up `rustfmt.toml` and `clippy.toml` at workspace root (pedantic lints on)
 - [x] 1.6 Add `.gitignore` (target/, IDE files)
-- [ ] 1.7 `git init` and first commit ("Phase 1 scaffolding")
-- [ ] 1.8 Confirm `docker compose run --rm dev cargo build --workspace` succeeds (empty workspace builds cleanly)
+- [x] 1.7 `git init` and first commit ("Phase 1 scaffolding")
+- [x] 1.8 Confirm `docker compose run --rm dev cargo build --workspace` succeeds (empty workspace builds cleanly)
 
 ## 2. Domain models (`models.rs`)
 
@@ -79,11 +79,11 @@ All cargo/rustc/etc. commands run **inside the dev container**, never on the hos
 
 - [x] 7.1 Re-export the public surface: traits, models, enums, heat_calc functions
 - [x] 7.2 Module-level docs explaining the trait-based architecture (link to spec §1)
-- [ ] 7.3 `cargo doc --no-deps` produces clean output with no warnings
+- [x] 7.3 `cargo doc --no-deps` produces clean output with no warnings
 
 ## 8. Phase 1 wrap-up
 
 - [x] 8.1 Inside the dev container: `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test` all green
 - [x] 8.2 README stub at repo root describing the Docker-based build/test workflow (link to CLAUDE.md)
-- [ ] 8.3 Tag commit `phase-1-complete`
-- [ ] 8.4 Update [CLAUDE.md](../CLAUDE.md) with any architectural decisions made during the phase
+- [x] 8.3 Tag commit `phase-1-complete`
+- [x] 8.4 Update [CLAUDE.md](../CLAUDE.md) with any architectural decisions made during the phase

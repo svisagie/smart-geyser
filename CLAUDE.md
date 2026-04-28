@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-This repo is **pre-code**. Only the spec and task tracker exist — no `Cargo.toml`, no source files yet. Phase 1 (workspace scaffolding + core library) is the next thing to build.
+**Phase 1 and Phase 2 are complete.** `smart-geyser-core` is fully implemented: domain models, trait surfaces, heat math, event detection, pattern store, shared state, decision engine, and a 14-day integration smoke test. 67 tests pass; fmt, clippy (-D warnings), and doc-tests are all clean. Phase 3 (opportunity engine + PV integration) is next.
 
 ## Source-of-truth documents
 
@@ -55,6 +55,14 @@ These commands won't work until Phase 1 §1 (Docker dev environment + workspace 
 - All units in models are explicit (`_c`, `_w`, `_kwh`, `_pct`, `_min`). Maintain that — don't introduce ambiguous numeric fields.
 - `PVSystemState` has exactly **one required field** (`battery_soc_pct`); everything else is `Option`. Provider implementations populate what they can and report it via `capabilities()`. The opportunity engine degrades gracefully through Path A → B → C based on what's available (spec §3.2).
 - Defaults in `OpportunityConfig` and `EngineConfig` are spec-defined — match them exactly in `Default` impls, don't invent new ones.
+
+## Architectural decisions (Phase 1–2)
+
+- `PatternStore` uses `Vec<f32>` (not `[f32; 168]`) for the histogram buckets — serde 1.x does not implement `Serialize`/`Deserialize` for fixed arrays larger than ~32 elements.
+- `tokio` is a main dependency of `smart-geyser-core` (not just dev), because `shared_state.rs` uses `tokio::sync::RwLock` in non-test code.
+- The decision engine test `make_engine` computes `lead_time` dynamically with `heat_lead_time_minutes` rather than a hardcoded constant — the preheat look-ahead depends on tank temp, which varies per test.
+- Integration test ticks at 06:30 (not 06:00) so that `look_ahead = 06:30 + ~38 min = 07:08` falls in the hour-7 bucket where showers were recorded, giving probability ≥ threshold.
+- `is_some_and` (Rust 1.70+) is preferred over `map().unwrap_or(false)` per clippy pedantic.
 
 ## Working style for this repo
 
