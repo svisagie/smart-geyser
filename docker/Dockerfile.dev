@@ -1,0 +1,26 @@
+# Pinned Rust toolchain for reproducible dev/test.
+# Bookworm slim keeps image size down while giving us a real glibc.
+FROM rust:1.85-slim-bookworm
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    CARGO_HOME=/usr/local/cargo \
+    RUSTUP_HOME=/usr/local/rustup \
+    CARGO_TERM_COLOR=always
+
+# Build essentials needed by common Rust crates (openssl-sys, mqtt clients, etc.)
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        pkg-config \
+        libssl-dev \
+        ca-certificates \
+        git \
+        curl \
+        build-essential \
+ && rm -rf /var/lib/apt/lists/*
+
+# rustfmt + clippy come with the official rust image, but make sure they're present
+RUN rustup component add rustfmt clippy
+
+WORKDIR /workspace
+
+CMD ["bash"]

@@ -1,0 +1,658 @@
+{
+  "nodes": [
+    {
+      "type": "text",
+      "id": "node_geyserwise",
+      "x": -3089.1336752619127,
+      "y": -998.6483411760776,
+      "width": 580,
+      "height": 254.33162369043748,
+      "color": "2",
+      "text": "## GeyserWise MAX\n\n- Differential ΔT pump controller (7–15°C)\n- Element relay 30A (max 4kW)\n- Tank + collector temperature probes\n- 90°C mechanical thermal cutout\n- 12V DC / 220V AC pump relay\n- Error codes E1–E7"
+    },
+    {
+      "type": "text",
+      "id": "node_geyserwala",
+      "x": -3088.253960818967,
+      "y": -689.9307008110229,
+      "width": 580,
+      "height": 218.1097070654004,
+      "color": "2",
+      "text": "## Geyserwala Connect\n\nReplaces GeyserWise PCB (no electrician needed)\nFully local REST + MQTT API — cloud-free\n\nAutomation signals:\n`external-demand` · `external-setpoint` · `external-disable`\n\nTimed-latch failsafe: auto-expires if service goes down"
+    },
+    {
+      "type": "text",
+      "id": "node_solar_hw",
+      "x": -3743.2864244947805,
+      "y": -634.5558050490109,
+      "width": 580,
+      "height": 120,
+      "color": "3",
+      "text": "## Solar Collector + Pump\nEvacuated tube / flat plate\n12V DC or 220V AC circulation pump\nCollector outlet temp probe"
+    },
+    {
+      "type": "text",
+      "id": "node_heating_types",
+      "x": -3087.983267657339,
+      "y": -406.00112587418124,
+      "width": 580,
+      "height": 172.01673234266056,
+      "color": "2",
+      "text": "## Supported Heating Systems\n`ElectricOnly` · `SolarPumped` · `SolarThermosyphon`\n`HeatPump` · `HeatPumpWithElement`\n\nAll systems use the same provider interface"
+    },
+    {
+      "type": "text",
+      "id": "node_pv_hw",
+      "x": -3188.4303771003215,
+      "y": 322.32868832211136,
+      "width": 580,
+      "height": 240,
+      "color": "3",
+      "text": "## PV + Battery System\n\nVictron MultiPlus / Quattro (Venus OS)\nSunsynk / Deye · Goodwe · Fronius\nSMA · Sungrow · Growatt · Fox ESS · EG4\nShelly EM · custom ESPHome energy monitor\n\nExposes: **battery SOC**, PV generation,\ngrid import/export, battery charge rate"
+    },
+    {
+      "type": "group",
+      "id": "grp_geyser_providers",
+      "x": -2306.941773739807,
+      "y": -916.2122358017256,
+      "width": 640,
+      "height": 520,
+      "color": "4",
+      "label": "Geyser Providers  (smart-geyser-providers)"
+    },
+    {
+      "type": "text",
+      "id": "node_prov_geyserwala",
+      "x": -2263.1988613999015,
+      "y": -895.8871066047275,
+      "width": 560,
+      "height": 160.9603091034727,
+      "text": "## GeyserwalaProvider\nPolls Geyserwala REST API → `GeyserState`\n**Capabilities:** `collector_temp`, `pump_active`, `heating_active`\nSends commands via automation signal endpoints"
+    },
+    {
+      "type": "text",
+      "id": "node_prov_ha_entity",
+      "x": -2263.198861399901,
+      "y": -723.1612046490477,
+      "width": 560,
+      "height": 130.69188118722786,
+      "text": "## GenericHAEntityProvider\nMaps any HA entities to `GeyserState` — no code needed\nEntity picker UI · Covers Shelly, ESPHome, Tuya, DIY"
+    },
+    {
+      "type": "text",
+      "id": "node_prov_mqtt_geyser",
+      "x": -2259.4559490599954,
+      "y": -548.5146844864222,
+      "width": 560,
+      "height": 134.64652016262517,
+      "text": "## GenericMqttProvider\nConfigurable subscribe / publish topics\nStandalone — no Home Assistant required"
+    },
+    {
+      "type": "group",
+      "id": "grp_pv_providers",
+      "x": -2360,
+      "y": 140,
+      "width": 640,
+      "height": 646.7631475624445,
+      "color": "3",
+      "label": "PV Providers  (smart-geyser-providers)"
+    },
+    {
+      "type": "text",
+      "id": "node_prov_victron",
+      "x": -2320,
+      "y": 200,
+      "width": 560,
+      "height": 139.280699458321,
+      "text": "## VictronProvider\nVenus OS local MQTT broker\n30s keep-alive ping required by Venus OS\n**Caps:** `pv_power`, `grid_power`, `battery_power`, `load_power`"
+    },
+    {
+      "type": "text",
+      "id": "node_prov_sunsynk",
+      "x": -2320,
+      "y": 356.8706120260308,
+      "width": 560,
+      "height": 108.11768671005143,
+      "text": "## SunsynkProvider\nSunsynk / Deye inverters via HA integration or direct API"
+    },
+    {
+      "type": "text",
+      "id": "node_prov_ha_pv",
+      "x": -2319.9999999999995,
+      "y": 489.80847360066196,
+      "width": 560,
+      "height": 132.13449909720168,
+      "text": "## GenericHAPVProvider\nMaps any HA entities to `PVSystemState`\nCovers Goodwe, Fronius, SMA, Sungrow, Shelly EM, ESPHome"
+    },
+    {
+      "type": "text",
+      "id": "node_prov_mqtt_pv",
+      "x": -2320.80336247743,
+      "y": 639.5328852655733,
+      "width": 560,
+      "height": 112.9378615746316,
+      "text": "## GenericMqttPVProvider\nConfigurable MQTT topics · Configurable sign convention"
+    },
+    {
+      "type": "group",
+      "id": "grp_core",
+      "x": -649.1926259609277,
+      "y": -946.591644480433,
+      "width": 820,
+      "height": 2054.0195603429047,
+      "color": "6",
+      "label": "smart-geyser-core  ·  Rust library  ·  Zero I/O · No HA dependency · Fully unit-testable"
+    },
+    {
+      "type": "text",
+      "id": "node_trait_geyser",
+      "x": -609.1926259609277,
+      "y": -886.591644480433,
+      "width": 740,
+      "height": 180,
+      "text": "## GeyserProvider  *(trait)*\n```rust\nasync fn get_state() -> Result<GeyserState>\nasync fn send_command(cmd: &GeyserCommand) -> Result<()>\nfn capabilities() -> HashSet<Capability>\n```\n**Minimum required:** `tank_temp_c` — all other `GeyserState` fields are `Option<_>`"
+    },
+    {
+      "type": "text",
+      "id": "node_trait_pv",
+      "x": -609.1926259609277,
+      "y": -686.591644480433,
+      "width": 740,
+      "height": 160,
+      "text": "## PVSystemProvider  *(trait)*\n```rust\nasync fn get_pv_state() -> Result<PVSystemState>\nfn capabilities() -> HashSet<PVCapability>\n```\n**Minimum required:** `battery_soc_pct` — all other fields are `Option<_>`"
+    },
+    {
+      "type": "text",
+      "id": "node_heating_system_enum",
+      "x": -609.1926259609277,
+      "y": -506.59164448043305,
+      "width": 740,
+      "height": 200,
+      "text": "## HeatingSystem  *(enum)*\n```rust\nElectricOnly        { element_kw, tank_volume_l }\nSolarPumped         { element_kw, tank_volume_l, collector_type }\nSolarThermosyphon   { element_kw, tank_volume_l }\nHeatPump            { rated_kw_input, cop_nominal, tank_volume_l }\nHeatPumpWithElement { hp_kw_input, hp_cop, element_kw, tank_volume_l }\n```"
+    },
+    {
+      "type": "text",
+      "id": "node_event_detector",
+      "x": -609.1926259609277,
+      "y": -286.59164448043305,
+      "width": 740,
+      "height": 180,
+      "text": "## EventDetector\nConsumes `GeyserState` stream → emits `UseEvent` when complete\n\n**Primary signal** *(if `InletTemp` cap)*: cold inlet temp drop\n**Fallback:** tank-top rate-of-change > passive cooling baseline\n**Suppresses** on `pump_active` / `heating_active` confounds\nAdapts behaviour to declared provider capabilities"
+    },
+    {
+      "type": "text",
+      "id": "node_pattern_store",
+      "x": -609.1926259609277,
+      "y": -86.59164448043305,
+      "width": 740,
+      "height": 180,
+      "text": "## PatternStore\nSQLite-backed **7 × 96 slot** usage histogram (15-min buckets)\nExponential decay: `event_count *= 0.995` per day\n`get_probability(dow, slot) → f32` — normalised 0–1 per day\nLearns typical last-use time per weekday\nBootstraps from HA `recorder` entity history on first install"
+    },
+    {
+      "type": "text",
+      "id": "node_heat_calc",
+      "x": -609.1926259609277,
+      "y": 113.40835551956695,
+      "width": 740,
+      "height": 160,
+      "text": "## HeatCalc\n```\nlead_min = (V_l × 4.186 × ΔT) / (effective_kw × 60) + safety_margin\n```\n**HeatPump:** `effective_kw = input_kw × COP` (uses `live_cop` if available)\n**SolarPumped:** element only — solar gain is unplanned bonus\n**HeatPumpWithElement:** HP effective power for scheduling"
+    },
+    {
+      "type": "text",
+      "id": "node_decision_engine",
+      "x": -609.1926259609277,
+      "y": 293.40835551956695,
+      "width": 740,
+      "height": 260,
+      "text": "## DecisionEngine\nRuns every **15 minutes** — looks 3 hours ahead\nQueries `PatternStore` for `p(use | dow, slot)`\nIf `p > preheat_threshold (0.40)`: schedules heating via lead time\n\n**Smart-stop** — engages after last use of day:\n- Learned last-use time per weekday (rolling average)\n- Blocks *scheduled* heating for rest of day\n- **Yields to `OpportunityEngine`** — free PV ≠ waste\n- Resets at midnight"
+    },
+    {
+      "type": "text",
+      "id": "node_opportunity_engine",
+      "x": -609.1926259609277,
+      "y": 573.408355519567,
+      "width": 740,
+      "height": 340,
+      "text": "## OpportunityEngine\nRuns every **60 seconds** — evaluates PV surplus conditions\n\n**Triggers (any one sufficient):**\n- **Path A** *(preferred)*: SOC ≥ 95% AND `grid_power < −200W`\n- **Path B:** SOC ≥ 95% AND `pv_power − load_power ≥ element_kw`\n- **Path C** *(weakest)*: SOC ≥ 95% AND battery not charging AND in solar window\n\n**Suppresses when:** tank ≥ 70°C · outside solar window\nsolar thermal already at 65°C ceiling · SOC dropped 3%\n\n**Overrides smart-stop** — surplus PV is not waste\n**Anti-cycling:** minimum 15-min run once started\n**Target temp:** 70°C *(thermal storage ceiling)*"
+    },
+    {
+      "type": "text",
+      "id": "node_solar_window",
+      "x": -609.1926259609277,
+      "y": 933.408355519567,
+      "width": 740,
+      "height": 140,
+      "text": "## SolarWindow\nSunrise/sunset from lat/lon  *(fallback: 07:00–17:00 local)*\nBlocks opportunity heating if < 45 min solar window remaining\nPrevents starting a session that available PV cannot complete"
+    },
+    {
+      "type": "text",
+      "id": "node_shared_state",
+      "x": -1584.6650940714503,
+      "y": 874.9537897428786,
+      "width": 740,
+      "height": 140,
+      "text": "## SharedEngineState  *(Arc\\<RwLock\\<_\\>\\>)*\n**Priority order: BOOST › FAULT › OPPORTUNITY › PREHEAT › IDLE**\nBoth engines read/write via lock\nIssues `GeyserCommand` back through `GeyserProvider`\n`demand` · `setpoint_c` · `disable` · `timeout_secs`"
+    },
+    {
+      "type": "group",
+      "id": "grp_service",
+      "x": 350.80737403907233,
+      "y": -686.591644480433,
+      "width": 680,
+      "height": 800,
+      "color": "5",
+      "label": "smart-geyser-service  ·  Rust binary"
+    },
+    {
+      "type": "text",
+      "id": "node_axum_api",
+      "x": 390.80737403907233,
+      "y": -626.591644480433,
+      "width": 600,
+      "height": 300,
+      "text": "## axum REST API  *(port 8742)*\n`GET  /api/state` · `/api/pv-state` · `/api/status`\n`GET  /api/profile?dow=N` · `/api/events` · `/api/config`\n`PUT  /api/config`  *(hot-reload — no restart needed)*\n`POST /api/boost` · `/api/override/smart-stop`\n`POST /api/log-manual-event` · `/api/reset-learning`\n\nStatus response includes **3-way energy split:**\n🟡 solar-thermal kWh · 🟠 PV-opportunity kWh · 🔴 grid kWh\n*(today + 30-day rolling %)*"
+    },
+    {
+      "type": "text",
+      "id": "node_scheduler",
+      "x": 390.80737403907233,
+      "y": -306.59164448043305,
+      "width": 600,
+      "height": 160,
+      "text": "## Scheduler  *(tokio async tasks)*\nPolls `GeyserProvider` every **30s** → feeds `EventDetector`\nPolls `PVSystemProvider` every **60s** → feeds `OpportunityEngine`\nTicks `DecisionEngine` every **15 min**\nTicks `OpportunityEngine` every **60s**"
+    },
+    {
+      "type": "text",
+      "id": "node_config_loader",
+      "x": 390.80737403907233,
+      "y": -126.59164448043305,
+      "width": 600,
+      "height": 140,
+      "text": "## Config  *(config.yaml / env vars)*\nProvider selection + connection details\n`HeatingSystem` type · `EngineConfig`\n`OpportunityConfig` · `SolarWindow`\nApplied hot via `PUT /api/config`"
+    },
+    {
+      "type": "group",
+      "id": "grp_ha_addon",
+      "x": 1170.8073740390723,
+      "y": -686.591644480433,
+      "width": 680,
+      "height": 320,
+      "color": "1",
+      "label": "HA Add-on  (Docker container)"
+    },
+    {
+      "type": "text",
+      "id": "node_docker",
+      "x": 1210.8073740390723,
+      "y": -626.591644480433,
+      "width": 600,
+      "height": 220,
+      "text": "## Docker Container\nArch: `aarch64` · `amd64` · `armv7`\nMounts `/data` → SQLite DB persists across restarts\nPort 8742 internal only\nReachable from Python integration via:\n`http://local_smart_geyser:8742`"
+    },
+    {
+      "type": "group",
+      "id": "grp_ha_integration",
+      "x": 1170.8073740390723,
+      "y": -266.59164448043305,
+      "width": 680,
+      "height": 1021.5881543613117,
+      "color": "1",
+      "label": "custom_components/smart_geyser  ·  Python  ·  Zero business logic"
+    },
+    {
+      "type": "text",
+      "id": "node_coordinator",
+      "x": 1210.8073740390723,
+      "y": -206.59164448043305,
+      "width": 600,
+      "height": 140,
+      "text": "## DataUpdateCoordinator\nPolls service REST API on schedule\nPure HTTP client — no decisions, no logic\nConfig flow wizard: provider selection + system type + params"
+    },
+    {
+      "type": "text",
+      "id": "node_ha_sensors",
+      "x": 1210.8073740390723,
+      "y": -46.59164448043305,
+      "width": 600,
+      "height": 260,
+      "text": "## Sensors & Binary Sensors\n`tank_temp` · `collector_temp` · `battery_soc`\n`pv_power` · `grid_power` · `usage_probability_now`\n`next_predicted_use` · `preheat_starts_at` · `events_today`\n`pv_opportunity_kwh_today` · `solar_fraction_30d`\n`pv_opportunity_fraction_30d` · `grid_fraction_30d`\n\nbinary: `use_event_active` · `smart_stop_active`\n`preheat_active` · `opportunity_active`"
+    },
+    {
+      "type": "text",
+      "id": "node_ha_controls",
+      "x": 1210.8073740390723,
+      "y": 233.40835551956695,
+      "width": 600,
+      "height": 200,
+      "text": "## Controls & Services\nnumber: `setpoint` · `preheat_threshold`\n  `opportunity_max_temp` · `soc_full_threshold`\nswitch: `smart_stop_override` · `opportunity_enabled`\n  `learning_enabled`\n\nServices: `boost(duration_min)` · `reset_learning`\n  `log_manual_event`"
+    },
+    {
+      "type": "text",
+      "id": "node_dashboard",
+      "x": 1210.8073740390723,
+      "y": 453.40835551956695,
+      "width": 600,
+      "height": 280,
+      "text": "## Lovelace Dashboard\n**Gauges:** tank temp · collector temp · battery SOC\n  PV power · grid import/export\n\n**Timeline:** today's use events · pre-heat windows\n  solar thermal periods · opportunity sessions\n\n**Usage heatmap:** 7-day × 96-slot probability grid\n\n**Energy split (30-day rolling):**\n🟡 Solar thermal · 🟠 PV opportunity · 🔴 Grid\n\n**Alerts:** tank cold with no heat scheduled · element fault\n  smart-stop engaged · opportunity active"
+    },
+    {
+      "type": "text",
+      "id": "node_standalone",
+      "x": 1170.8073740390723,
+      "y": 773.408355519567,
+      "width": 680,
+      "height": 140,
+      "color": "5",
+      "text": "## Standalone Mode  *(no Home Assistant required)*\nRust service + `GenericMqttProvider` + `GenericMqttPVProvider`\nAny MQTT broker · Any hardware exposing tank temp + a demand switch\nPattern DB persists in `/data/smart_geyser.db`\nAll REST API endpoints still available for custom dashboards"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_gw_geyserwala",
+      "fromNode": "node_geyserwise",
+      "fromSide": "bottom",
+      "toNode": "node_geyserwala",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "label": "PCB replacement"
+    },
+    {
+      "id": "e_solar_geyserwala",
+      "fromNode": "node_solar_hw",
+      "fromSide": "right",
+      "toNode": "node_geyserwala",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "collector probe"
+    },
+    {
+      "id": "e_connect_prov",
+      "fromNode": "node_geyserwala",
+      "fromSide": "right",
+      "toNode": "node_prov_geyserwala",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "REST / MQTT"
+    },
+    {
+      "id": "e_hw_ha_prov",
+      "fromNode": "node_geyserwise",
+      "fromSide": "right",
+      "toNode": "node_prov_ha_entity",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "via HA entities"
+    },
+    {
+      "id": "e_pv_victron",
+      "fromNode": "node_pv_hw",
+      "fromSide": "right",
+      "toNode": "node_prov_victron",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "Venus OS MQTT"
+    },
+    {
+      "id": "e_pv_sunsynk",
+      "fromNode": "node_pv_hw",
+      "fromSide": "right",
+      "toNode": "node_prov_sunsynk",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "HA / direct API"
+    },
+    {
+      "id": "e_pv_ha",
+      "fromNode": "node_pv_hw",
+      "fromSide": "right",
+      "toNode": "node_prov_ha_pv",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "via HA entities"
+    },
+    {
+      "id": "e_pv_mqtt",
+      "fromNode": "node_pv_hw",
+      "fromSide": "right",
+      "toNode": "node_prov_mqtt_pv",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "MQTT topics"
+    },
+    {
+      "id": "e_gp1",
+      "fromNode": "node_prov_geyserwala",
+      "fromSide": "right",
+      "toNode": "node_trait_geyser",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "implements"
+    },
+    {
+      "id": "e_gp2",
+      "fromNode": "node_prov_ha_entity",
+      "fromSide": "right",
+      "toNode": "node_trait_geyser",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "implements"
+    },
+    {
+      "id": "e_gp3",
+      "fromNode": "node_prov_mqtt_geyser",
+      "fromSide": "right",
+      "toNode": "node_trait_geyser",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "implements"
+    },
+    {
+      "id": "e_pp1",
+      "fromNode": "node_prov_victron",
+      "fromSide": "right",
+      "toNode": "node_trait_pv",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "implements"
+    },
+    {
+      "id": "e_pp2",
+      "fromNode": "node_prov_sunsynk",
+      "fromSide": "right",
+      "toNode": "node_trait_pv",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "implements"
+    },
+    {
+      "id": "e_pp3",
+      "fromNode": "node_prov_ha_pv",
+      "fromSide": "right",
+      "toNode": "node_trait_pv",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "implements"
+    },
+    {
+      "id": "e_pp4",
+      "fromNode": "node_prov_mqtt_pv",
+      "fromSide": "right",
+      "toNode": "node_trait_pv",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "implements"
+    },
+    {
+      "id": "e_geyser_detector",
+      "fromNode": "node_trait_geyser",
+      "fromSide": "bottom",
+      "toNode": "node_event_detector",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "label": "GeyserState stream"
+    },
+    {
+      "id": "e_geyser_heatcalc",
+      "fromNode": "node_trait_geyser",
+      "fromSide": "bottom",
+      "toNode": "node_heat_calc",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "label": "current_temp_c"
+    },
+    {
+      "id": "e_pv_opportunity",
+      "fromNode": "node_trait_pv",
+      "fromSide": "bottom",
+      "toNode": "node_opportunity_engine",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "label": "PVSystemState"
+    },
+    {
+      "id": "e_heating_heatcalc",
+      "fromNode": "node_heating_system_enum",
+      "fromSide": "bottom",
+      "toNode": "node_heat_calc",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "label": "system params"
+    },
+    {
+      "id": "e_detector_store",
+      "fromNode": "node_event_detector",
+      "fromSide": "bottom",
+      "toNode": "node_pattern_store",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "label": "UseEvent"
+    },
+    {
+      "id": "e_store_decision",
+      "fromNode": "node_pattern_store",
+      "fromSide": "bottom",
+      "toNode": "node_decision_engine",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "label": "p(use | dow, slot)"
+    },
+    {
+      "id": "e_calc_decision",
+      "fromNode": "node_heat_calc",
+      "fromSide": "bottom",
+      "toNode": "node_decision_engine",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "label": "lead_time_minutes"
+    },
+    {
+      "id": "e_solar_opportunity",
+      "fromNode": "node_solar_window",
+      "fromSide": "top",
+      "toNode": "node_opportunity_engine",
+      "toSide": "bottom",
+      "toEnd": "arrow",
+      "label": "is_active() / minutes_remaining()"
+    },
+    {
+      "id": "e_state_command",
+      "fromNode": "node_shared_state",
+      "fromSide": "left",
+      "toNode": "node_trait_geyser",
+      "toSide": "bottom",
+      "toEnd": "arrow",
+      "color": "1",
+      "label": "GeyserCommand\ndemand / setpoint / disable"
+    },
+    {
+      "id": "e_core_service",
+      "fromNode": "grp_core",
+      "fromSide": "right",
+      "toNode": "grp_service",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "instantiated by"
+    },
+    {
+      "id": "e_service_addon",
+      "fromNode": "grp_service",
+      "fromSide": "right",
+      "toNode": "grp_ha_addon",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "packaged inside"
+    },
+    {
+      "id": "e_addon_ha",
+      "fromNode": "grp_ha_addon",
+      "fromSide": "bottom",
+      "toNode": "grp_ha_integration",
+      "toSide": "top",
+      "toEnd": "arrow",
+      "label": "HTTP REST :8742"
+    },
+    {
+      "id": "e_coord_sensors",
+      "fromNode": "node_coordinator",
+      "fromSide": "bottom",
+      "toNode": "node_ha_sensors",
+      "toSide": "top",
+      "toEnd": "arrow"
+    },
+    {
+      "id": "e_coord_controls",
+      "fromNode": "node_coordinator",
+      "fromSide": "bottom",
+      "toNode": "node_ha_controls",
+      "toSide": "top",
+      "toEnd": "arrow"
+    },
+    {
+      "id": "e_sensors_dashboard",
+      "fromNode": "node_ha_sensors",
+      "fromSide": "bottom",
+      "toNode": "node_dashboard",
+      "toSide": "top",
+      "toEnd": "arrow"
+    },
+    {
+      "id": "e_controls_dashboard",
+      "fromNode": "node_ha_controls",
+      "fromSide": "bottom",
+      "toNode": "node_dashboard",
+      "toSide": "top",
+      "toEnd": "arrow"
+    },
+    {
+      "id": "e81d5b56-a88f-4bd0-839e-1211fff48343",
+      "fromNode": "node_opportunity_engine",
+      "fromSide": "bottom",
+      "toNode": "node_shared_state",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "style": "solid",
+      "shape": "curved"
+    },
+    {
+      "id": "734da593-6335-4200-8af8-720b714e70c2",
+      "fromNode": "node_decision_engine",
+      "fromSide": "bottom",
+      "toNode": "node_shared_state",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "style": "solid",
+      "shape": "curved"
+    },
+    {
+      "id": "0d18da8e-e9c3-43e0-9a19-1157e85fd80f",
+      "fromNode": "node_geyserwise",
+      "fromSide": "right",
+      "toNode": "node_prov_mqtt_geyser",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "MQTT topics",
+      "style": "solid",
+      "shape": "curved"
+    }
+  ]
+}
