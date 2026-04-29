@@ -54,7 +54,7 @@ pub trait GeyserProvider: Send + Sync {
     fn capabilities(&self) -> GeyserCapabilities;
 
     /// A human-readable name for this provider (used in logs and the API).
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 
     /// The heating-system topology this provider is attached to.
     fn system(&self) -> HeatingSystem;
@@ -72,7 +72,7 @@ pub mod mock {
         state: GeyserState,
         capabilities: GeyserCapabilities,
         system: HeatingSystem,
-        name: String,
+        name: &'static str,
         element_calls: std::sync::Mutex<Vec<bool>>,
         pump_calls: std::sync::Mutex<Vec<bool>>,
     }
@@ -82,13 +82,13 @@ pub mod mock {
             state: GeyserState,
             capabilities: GeyserCapabilities,
             system: HeatingSystem,
-            name: impl Into<String>,
+            name: &'static str,
         ) -> Self {
             Self {
                 state,
                 capabilities,
                 system,
-                name: name.into(),
+                name,
                 element_calls: std::sync::Mutex::new(Vec::new()),
                 pump_calls: std::sync::Mutex::new(Vec::new()),
             }
@@ -123,8 +123,8 @@ pub mod mock {
             self.capabilities.clone()
         }
 
-        fn name(&self) -> &str {
-            &self.name
+        fn name(&self) -> &'static str {
+            self.name
         }
 
         fn system(&self) -> HeatingSystem {

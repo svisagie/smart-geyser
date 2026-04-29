@@ -1,6 +1,6 @@
 # Pinned Rust toolchain for reproducible dev/test.
 # Bookworm slim keeps image size down while giving us a real glibc.
-FROM rust:1.85-slim-bookworm
+FROM rust:1-slim-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive \
     CARGO_HOME=/usr/local/cargo \

@@ -39,7 +39,7 @@ pub trait PVSystemProvider: Send + Sync {
     fn capabilities(&self) -> PVCapabilities;
 
     /// Human-readable provider identifier used in logs and diagnostics.
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +61,7 @@ pub mod mock {
     pub struct MockPVProvider {
         state: PVSystemState,
         capabilities: PVCapabilities,
-        name: String,
+        name: &'static str,
     }
 
     impl MockPVProvider {
@@ -69,12 +69,12 @@ pub mod mock {
         pub fn new(
             state: PVSystemState,
             capabilities: PVCapabilities,
-            name: impl Into<String>,
+            name: &'static str,
         ) -> Self {
             Self {
                 state,
                 capabilities,
-                name: name.into(),
+                name,
             }
         }
 
@@ -107,8 +107,8 @@ pub mod mock {
             self.capabilities.clone()
         }
 
-        fn name(&self) -> &str {
-            &self.name
+        fn name(&self) -> &'static str {
+            self.name
         }
     }
 }

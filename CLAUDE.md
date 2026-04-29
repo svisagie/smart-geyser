@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-**Phases 1–3 are complete.** `smart-geyser-core` is fully implemented: domain models, trait surfaces, heat math, event detection, pattern store, shared state, decision engine, and a 14-day integration smoke test. `DecisionIntent::Opportunity` and `OpportunityReason` exist in the type system; the full `OpportunityEngine` is deferred to v2. 65 tests pass; fmt, clippy (-D warnings), and doc-tests are all clean. Phase 4 (providers) is next.
+**Phases 1–4 are complete (v1 scope).** `smart-geyser-core` and `smart-geyser-providers` are implemented. Core: domain models, trait surfaces, heat math, event detection, pattern store, shared state, decision engine, 14-day integration smoke test. Providers: `GeyserwalaProvider` (HTTP, wiremock-tested). PV providers deferred to v2 — pass `None` for `PVSystemProvider` at the service layer. 76 tests pass; fmt, clippy (-D warnings), and doc-tests are all clean. Phase 5 (service) is next.
 
 ## Source-of-truth documents
 
