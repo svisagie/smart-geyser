@@ -102,6 +102,8 @@ That's it. Richer providers unlock better accuracy:
 
 `smart-geyser-core` gains a new module: `opportunity_engine.rs`. It is separate from `decision_engine.rs` so they can be reasoned about independently. The coordinator calls both on each tick.
 
+**PV integration is entirely optional.** The service holds an `Option<Arc<dyn PVSystemProvider>>`. When it is `None`, the `OpportunityEngine` is never constructed and `opportunity_active` stays `false` permanently — the system behaves as a pure pattern-scheduling controller. No code path in `decision_engine.rs` or `shared_state.rs` needs to know whether a PV provider is configured.
+
 ### 3.1 The Core Concept
 
 ```
@@ -256,7 +258,7 @@ If solar thermal is active but tank is still below the ceiling, PV opportunity h
 
 ## 4. Updated Decision Engine Integration
 
-`decision_engine.rs` and `opportunity_engine.rs` run as separate async tasks but share state via a `SharedEngineState` struct protected by an `Arc<RwLock<_>>`:
+`decision_engine.rs` and `opportunity_engine.rs` run as separate async tasks but share state via a `SharedEngineState` struct protected by an `Arc<RwLock<_>>`. When no `PVSystemProvider` is configured the opportunity engine task is simply not spawned; `SharedEngineState` needs no change because `opportunity_active` defaults to `false`.
 
 ```rust
 pub struct SharedEngineState {
@@ -553,12 +555,14 @@ pub struct EngineConfig {
 
 ### 10.1 Electric-only geyser, no PV
 
-No `PVSystemProvider` configured. `opportunity` is `None`.
+No `PVSystemProvider` configured (`pv_provider: None` in the service). `opportunity` is `None` in `EngineConfig`.
+The service does not spawn an `OpportunityEngine` task. `opportunity_active` stays `false` permanently.
 Behaviour: fully pattern-based scheduling + smart-stop. Pure learning controller.
 
 ### 10.2 Solar pumped geyser, no PV battery
 
 `HeatingSystem::SolarPumped`, no `PVSystemProvider`.
+Same as §10.1: no `OpportunityEngine` task, `opportunity_active` always `false`.
 Behaviour: solar thermal pump controlled by Geyserwala. Electric element only fires based on pattern scheduling. Smart-stop active.
 
 ### 10.3 Solar pumped geyser + Victron battery/PV

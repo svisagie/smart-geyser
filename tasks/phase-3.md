@@ -4,6 +4,8 @@
 
 **Goal:** Implement PV-surplus opportunity heating. `solar_window.rs` provides sunrise/sunset awareness; `opportunity_engine.rs` evaluates trigger paths A/B/C, enforces suppress conditions, and interacts correctly with smart-stop and solar thermal. The `DecisionIntent` enum gains an `Opportunity` variant and the priority order is enforced.
 
+**PV is optional:** The service holds `Option<Arc<dyn PVSystemProvider>>`. When `None`, the `OpportunityEngine` is never constructed — `opportunity_active` stays `false` permanently and the system behaves as a pure pattern controller. `OpportunityEngine::new` must document this invariant in its doc comment. No code in `decision_engine.rs` or `shared_state.rs` should reference or check for a PV provider.
+
 **Exit criteria:** `cargo test -p smart-geyser-core` passes. Synthetic PV state streams fed into the opportunity engine produce the correct trigger/suppress decisions across all three paths; smart-stop override scenarios are explicitly tested; solar thermal interaction tests are green. No I/O in any of these modules — pure logic only.
 
 ---

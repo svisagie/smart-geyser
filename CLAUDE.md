@@ -56,6 +56,10 @@ These commands won't work until Phase 1 §1 (Docker dev environment + workspace 
 - `PVSystemState` has exactly **one required field** (`battery_soc_pct`); everything else is `Option`. Provider implementations populate what they can and report it via `capabilities()`. The opportunity engine degrades gracefully through Path A → B → C based on what's available (spec §3.2).
 - Defaults in `OpportunityConfig` and `EngineConfig` are spec-defined — match them exactly in `Default` impls, don't invent new ones.
 
+## PV integration is optional
+
+The service holds `Option<Arc<dyn PVSystemProvider>>`. When `None`, the `OpportunityEngine` is never constructed and `opportunity_active` stays `false` permanently. The decision engine and shared state need no changes — they already treat `opportunity_active = false` as the no-PV baseline. This is the correct behaviour for any geyser-only installation.
+
 ## Architectural decisions (Phase 1–2)
 
 - `PatternStore` uses `Vec<f32>` (not `[f32; 168]`) for the histogram buckets — serde 1.x does not implement `Serialize`/`Deserialize` for fixed arrays larger than ~32 elements.
