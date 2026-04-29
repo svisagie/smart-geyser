@@ -25,9 +25,9 @@
 
 ## 2. `DecisionIntent` update (`decision_engine.rs`)
 
-- [ ] 2.1 Add `Opportunity { reason: OpportunityReason, target_temp_c: f32 }` variant to the `DecisionIntent` enum (no Opportunity variant existed in Phase 2 — spec §4 priority order item 3)
-- [ ] 2.2 Define `OpportunityReason` enum with variants: `BatteryFullExporting` (Path A), `BatteryFullPVCoverage` (Path B), `BatteryFullSocOnly` (Path C)
-- [ ] 2.3 Update any existing match arms on `DecisionIntent` in `decision_engine.rs` and tests to handle the new variant
+- [x] 2.1 Add `Opportunity { reason: OpportunityReason, target_temp_c: f32 }` variant to the `DecisionIntent` enum (no Opportunity variant existed in Phase 2 — spec §4 priority order item 3)
+- [x] 2.2 Define `OpportunityReason` enum with variants: `BatteryFullExporting` (Path A), `BatteryFullPvCoverage` (Path B), `BatteryFullSocOnly` (Path C)
+- [x] 2.3 Update any existing match arms on `DecisionIntent` in `decision_engine.rs` and tests to handle the new variant
 
 ## 3. `SharedEngineState` update (`shared_state.rs`)
 
@@ -102,9 +102,13 @@
 - [ ] 9.4 Scenario: smart-stop active all day + sunny afternoon → opportunity engine fires at least one session; decision engine emits no `Preheat` while smart-stop active
 - [ ] 9.5 Assert: over the 6-hour stream, total simulated time with `opportunity_active = true` correlates with PV surplus windows
 
+## ~~Tasks 1, 3–9~~ — Deferred to v2
+
+The full `OpportunityEngine` (solar window, trigger paths A/B/C, suppress conditions, anti-cycling, integration tests) is deferred. The `None` PV case is handled at the service layer: when no `PVSystemProvider` is configured the `OpportunityEngine` is never constructed and `opportunity_active` stays `false`. `DecisionIntent::Opportunity` and `OpportunityReason` exist in the type system for when the engine is built.
+
 ## 10. Phase 3 wrap-up
 
-- [ ] 10.1 Inside the dev container: `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test` all green (per CLAUDE.md Docker-only rule)
-- [ ] 10.2 Tag commit `phase-3-complete`
-- [ ] 10.3 Update [CLAUDE.md](../CLAUDE.md) with any architectural decisions or learnings from this phase
-- [ ] 10.4 Open Phase 4 task file when starting that phase
+- [x] 10.1 Inside the dev container: `cargo fmt --check`, `cargo clippy -- -D warnings`, `cargo test` all green (per CLAUDE.md Docker-only rule)
+- [x] 10.2 Tag commit `phase-3-complete`
+- [x] 10.3 Update [CLAUDE.md](../CLAUDE.md) with any architectural decisions or learnings from this phase
+- [x] 10.4 Open Phase 4 task file when starting that phase

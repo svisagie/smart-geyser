@@ -11,6 +11,17 @@ use crate::shared_state::{is_boosting, SharedState};
 // DecisionIntent
 // ---------------------------------------------------------------------------
 
+/// Why an opportunity heating session was triggered (spec §3.2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OpportunityReason {
+    /// Path A — battery full and actively exporting to grid.
+    BatteryFullExporting,
+    /// Path B — battery full and PV generation covers element draw.
+    BatteryFullPvCoverage,
+    /// Path C — battery full and solar window active (SOC-only fallback).
+    BatteryFullSocOnly,
+}
+
 /// The output of a single decision-engine tick.
 #[must_use]
 #[derive(Debug, Clone, PartialEq)]
@@ -23,6 +34,12 @@ pub enum DecisionIntent {
     Boost { until: DateTime<Utc> },
     /// Suppress heating — patterns show no use expected soon.
     SmartStop,
+    /// PV surplus opportunity heating — heat to `target_temp_c` while free
+    /// energy is available. Overrides smart-stop (spec §3.6).
+    Opportunity {
+        reason: OpportunityReason,
+        target_temp_c: f32,
+    },
 }
 
 // ---------------------------------------------------------------------------
