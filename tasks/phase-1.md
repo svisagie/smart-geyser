@@ -44,9 +44,8 @@ All cargo/rustc/etc. commands run **inside the dev container**, never on the hos
 
 ## 3. `HeatingSystem` enum (`system.rs`)
 
-- [x] 3.1 Define `HeatingSystem` enum: `ElectricOnly`, `SolarPumped { pump_voltage: PumpVoltage }`, `HeatPump { cop_nominal: f32, live_cop: Option<f32> }`
-- [x] 3.2 Define `PumpVoltage` enum (`Dc12V`, `Ac220V`)
-- [x] 3.3 Helper methods: `effective_cop(&self) -> f32`, `is_solar_pumped(&self) -> bool`, etc.
+- [x] 3.1 Define `HeatingSystem` enum: `ElectricOnly`, `SolarPumped`, `HeatPump { cop_nominal: f32, live_cop: Option<f32> }`
+- [x] 3.2 Helper methods: `effective_cop(&self) -> f32`, `is_solar_pumped(&self) -> bool`, etc.
 - [x] 3.4 Unit tests covering each variant + `effective_cop` (live_cop overrides nominal; ElectricOnly returns 1.0)
 
 ## 4. Geyser provider trait (`provider.rs`)

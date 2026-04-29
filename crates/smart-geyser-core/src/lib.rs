@@ -6,7 +6,7 @@
 //!
 //! * Domain models (`models`) — `GeyserState`, `PVSystemState`,
 //!   `OpportunityConfig`, `EngineConfig`, etc.
-//! * The heating-system taxonomy (`system`) — `HeatingSystem`, `PumpVoltage`.
+//! * The heating-system taxonomy (`system`) — `HeatingSystem`.
 //! * Provider traits (`provider`, `pv_provider`) — `GeyserProvider`,
 //!   `PVSystemProvider` and their capability enums.
 //! * Heat-calculation math (`heat_calc`) — pure functions, no I/O.
@@ -34,4 +34,4 @@ pub use models::{
 };
 pub use provider::{GeyserCapabilities, GeyserCapability, GeyserProvider};
 pub use pv_provider::PVSystemProvider;
-pub use system::{HeatingSystem, PumpVoltage};
+pub use system::HeatingSystem;

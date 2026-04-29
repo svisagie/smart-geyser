@@ -17,8 +17,11 @@ Phase-by-phase task tracker for the Smart Geyser project. Source of truth for wh
 
 - [Phase 1 — Core Library](phase-1.md)
 - [Phase 2 — Event Detection & Pattern Store](phase-2.md)
-
-(Phases 3–7 will get their own files when their predecessor phase is complete.)
+- [Phase 3 — Opportunity Engine](phase-3.md)
+- [Phase 4 — Providers](phase-4.md)
+- [Phase 5 — Service & Add-on](phase-5.md)
+- [Phase 6 — HA Integration](phase-6.md)
+- [Phase 7 — Polish & Release](phase-7.md)
 
 ## Spec reference
 
