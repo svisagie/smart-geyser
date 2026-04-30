@@ -11,6 +11,7 @@ use crate::app_state::AppState;
 pub struct StatusResponse {
     pub system_type: &'static str,
     pub provider: &'static str,
+    pub setpoint_c: f32,
     pub tank_temp_c: Option<f32>,
     pub collector_temp_c: Option<f32>,
     pub pump_active: Option<bool>,
@@ -27,6 +28,7 @@ pub struct StatusResponse {
 pub async fn get_status(State(state): State<AppState>) -> Json<StatusResponse> {
     let snap = state.snapshot.read().await;
     let shared = state.shared.read().await;
+    let setpoint_c = *state.setpoint_c.read().await;
 
     let system_type = match state.provider.system {
         HeatingSystem::ElectricOnly => "electric_only",
@@ -49,6 +51,7 @@ pub async fn get_status(State(state): State<AppState>) -> Json<StatusResponse> {
     Json(StatusResponse {
         system_type,
         provider: state.provider.geyser_name,
+        setpoint_c,
         tank_temp_c,
         collector_temp_c,
         pump_active,
@@ -99,6 +102,7 @@ mod tests {
         let body = resp.json::<serde_json::Value>();
         assert_eq!(body["system_type"], "solar_pumped");
         assert_eq!(body["provider"], "Test Provider");
+        assert_eq!(body["setpoint_c"], 60.0);
         assert!(body["tank_temp_c"].is_null());
         assert_eq!(body["smart_stop_active"], false);
         assert_eq!(body["events_today"], 0);

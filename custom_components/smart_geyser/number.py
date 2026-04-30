@@ -53,9 +53,10 @@ class SmartGeyserSetpoint(CoordinatorEntity[SmartGeyserCoordinator], NumberEntit
 
     @property
     def native_value(self) -> float | None:
-        # The service doesn't echo the setpoint in the status response yet;
-        # return None to let HA show the last set value.
-        return None
+        if self.coordinator.data is None:
+            return None
+        return self.coordinator.data.setpoint_c
 
     async def async_set_native_value(self, value: float) -> None:
         await self.coordinator.client.post_setpoint(value)
+        await self.coordinator.async_request_refresh()

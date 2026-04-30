@@ -51,6 +51,7 @@ class GeyserStatus:
 
     system_type: str
     provider: str
+    setpoint_c: float
     tank_temp_c: float | None
     collector_temp_c: float | None
     pump_active: bool | None
@@ -79,6 +80,7 @@ class GeyserStatus:
         return cls(
             system_type=data["system_type"],
             provider=data["provider"],
+            setpoint_c=data["setpoint_c"],
             tank_temp_c=data.get("tank_temp_c"),
             collector_temp_c=data.get("collector_temp_c"),
             pump_active=data.get("pump_active"),

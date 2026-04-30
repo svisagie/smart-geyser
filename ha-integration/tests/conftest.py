@@ -38,6 +38,7 @@ def mock_status() -> GeyserStatus:
     return GeyserStatus(
         system_type="solar_pumped",
         provider="Geyserwala Connect",
+        setpoint_c=60.0,
         tank_temp_c=58.5,
         collector_temp_c=72.1,
         pump_active=True,
