@@ -215,6 +215,7 @@ impl SolarWindow {
 /// Top-level configuration for the engines. Defaults must match spec §9
 /// exactly.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct EngineConfig {
     // --- System ---
     /// What kind of geyser hardware is being controlled.

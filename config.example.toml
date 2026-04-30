@@ -1,0 +1,42 @@
+# smart-geyser-service configuration
+#
+# Copy this file to config.toml and adjust for your installation.
+# Most fields have sensible defaults and can be omitted.
+
+# --- Service ------------------------------------------------------------------
+
+# Address and port to listen on. Default: 0.0.0.0:8080
+# listen_addr = "0.0.0.0:8080"
+
+# How often (in seconds) to poll the geyser and run the decision engine.
+# Default: 60
+# tick_interval_secs = 60
+
+# Directory for persisting the usage-pattern store between restarts.
+# Leave empty to disable persistence (pattern store resets on restart).
+# Default: "" (disabled)
+# data_dir = "/data"
+
+# --- Geyser provider ----------------------------------------------------------
+# Required. Only "geyserwala" is supported in v1.
+
+[geyser]
+type = "geyserwala"
+base_url = "http://192.168.1.50"   # required: Geyserwala Connect device IP/hostname
+# token = "your-api-token"         # optional: Bearer token if auth is enabled
+# element_kw = 3.0                 # element nameplate power in kW. Default: 3.0
+# tank_volume_l = 150.0            # tank volume in litres. Default: 150.0
+# timeout_secs = 10                # HTTP request timeout. Default: 10
+
+# --- Decision engine ----------------------------------------------------------
+# All fields are optional; defaults match the spec.
+
+[engine]
+# setpoint_c = 60.0               # target tank temperature (°C). Default: 60.0
+# hysteresis_c = 4.0              # dead-band around setpoint. Default: 4.0
+# preheat_threshold = 0.40        # usage-probability above which pre-heat fires. Default: 0.40
+# late_use_threshold = 0.15       # usage-probability below which late-day heat suppressed. Default: 0.15
+# cutoff_buffer_min = 30          # minutes before predicted use to stop heating. Default: 30
+# safety_margin_min = 20          # extra minutes added to lead-time. Default: 20
+# decay_factor = 0.995            # per-tick decay of the usage histogram. Default: 0.995
+# legionella_interval_days = 7    # force 65 °C cycle every N days. Default: 7

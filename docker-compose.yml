@@ -14,6 +14,23 @@ services:
       CARGO_TERM_COLOR: always
     command: bash
 
+  ha-test:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ha-test
+    image: smart-geyser-ha-test
+    working_dir: /workspace/ha-integration
+    volumes:
+      - .:/workspace
+
+  prod:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.prod
+    image: smart-geyser-service
+    ports:
+      - "8080:8080"
+
 volumes:
   cargo-registry:
   cargo-git:

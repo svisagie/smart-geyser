@@ -1,0 +1,58 @@
+name: Smart Geyser Controller
+version: "1.0.0"
+slug: smart_geyser
+description: Pattern-learning hot-water geyser controller with optional PV opportunity heating.
+url: https://github.com/svisagie/smart-geyser
+image: ghcr.io/svisagie/smart-geyser/smart-geyser
+arch:
+  - aarch64
+  - amd64
+  - armhf
+startup: application
+boot: auto
+ports:
+  8080/tcp: 8080
+ports_description:
+  8080/tcp: REST API
+
+options:
+  listen_addr: "0.0.0.0:8080"
+  tick_interval_secs: 60
+  data_dir: /data
+  geyser:
+    type: geyserwala
+    base_url: http://192.168.1.50
+    token: ""
+    element_kw: 3.0
+    tank_volume_l: 150.0
+    timeout_secs: 10
+  engine:
+    setpoint_c: 60.0
+    hysteresis_c: 4.0
+    preheat_threshold: 0.40
+    late_use_threshold: 0.15
+    cutoff_buffer_min: 30
+    safety_margin_min: 20
+    decay_factor: 0.995
+    legionella_interval_days: 7
+
+schema:
+  listen_addr: str
+  tick_interval_secs: int(1,3600)
+  data_dir: str
+  geyser:
+    type: str
+    base_url: url
+    token: str?
+    element_kw: float
+    tank_volume_l: float
+    timeout_secs: int(1,300)
+  engine:
+    setpoint_c: float(40,75)
+    hysteresis_c: float(0,20)
+    preheat_threshold: float(0,1)
+    late_use_threshold: float(0,1)
+    cutoff_buffer_min: int(0,120)
+    safety_margin_min: int(0,60)
+    decay_factor: float(0.9,1.0)
+    legionella_interval_days: int(1,30)

@@ -19,3 +19,16 @@ docker-compose.override.yml
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+ha-integration/.pytest_cache/
+ha-integration/tests/__pycache__/
+ha-integration/custom_components/**/__pycache__/
+custom_components/**/__pycache__/
+
+# Local config
+config.toml
+/data/

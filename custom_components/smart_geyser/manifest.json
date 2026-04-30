@@ -1,0 +1,10 @@
+{
+  "domain": "smart_geyser",
+  "name": "Smart Geyser Controller",
+  "version": "1.0.0",
+  "codeowners": ["@svisagie"],
+  "config_flow": true,
+  "documentation": "https://github.com/svisagie/smart-geyser",
+  "iot_class": "local_polling",
+  "requirements": []
+}

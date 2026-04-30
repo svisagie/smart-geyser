@@ -1,0 +1,44 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Smart Geyser Service",
+        "description": "Enter the address of your smart-geyser-service instance.",
+        "data": {
+          "host": "Host / IP address",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the service. Check the host and port.",
+      "invalid_response": "The service returned an unexpected response.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This service is already configured."
+    }
+  },
+  "services": {
+    "boost": {
+      "name": "Boost",
+      "description": "Force the geyser element on for a specified duration.",
+      "fields": {
+        "duration_minutes": {
+          "name": "Duration",
+          "description": "How many minutes to boost (1–480)."
+        }
+      }
+    },
+    "set_setpoint": {
+      "name": "Set Setpoint",
+      "description": "Change the target heating temperature.",
+      "fields": {
+        "temp_c": {
+          "name": "Temperature",
+          "description": "Target temperature in °C (40–75)."
+        }
+      }
+    }
+  }
+}

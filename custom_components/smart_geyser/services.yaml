@@ -1,0 +1,33 @@
+boost:
+  name: Boost
+  description: Force the geyser element on for a specified duration.
+  target:
+    entity:
+      domain: switch
+  fields:
+    duration_minutes:
+      name: Duration
+      description: How many minutes to boost (1–480).
+      required: true
+      default: 60
+      selector:
+        number:
+          min: 1
+          max: 480
+          unit_of_measurement: min
+
+set_setpoint:
+  name: Set Setpoint
+  description: Change the target heating temperature.
+  fields:
+    temp_c:
+      name: Temperature
+      description: Target temperature in °C (40–75).
+      required: true
+      default: 60
+      selector:
+        number:
+          min: 40
+          max: 75
+          step: 0.5
+          unit_of_measurement: "°C"

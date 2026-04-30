@@ -4,7 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-**Phases 1–4 are complete (v1 scope).** `smart-geyser-core` and `smart-geyser-providers` are implemented. Core: domain models, trait surfaces, heat math, event detection, pattern store, shared state, decision engine, 14-day integration smoke test. Providers: `GeyserwalaProvider` (HTTP, wiremock-tested). PV providers deferred to v2 — pass `None` for `PVSystemProvider` at the service layer. 76 tests pass; fmt, clippy (-D warnings), and doc-tests are all clean. Phase 5 (service) is next.
+**Phases 1–7 are complete (v1 scope — everything that can be done without external accounts).** All three crates are implemented and 87 tests pass. Core: domain models, trait surfaces, heat math, event detection, pattern store, shared state, decision engine. Providers: `GeyserwalaProvider` (HTTP, wiremock-tested). Service: axum REST API, scheduler tick loop, TOML/env config loading, Docker prod image. HA integration: Python custom component with DataUpdateCoordinator, 5 sensor/binary_sensor/number/switch platforms, config flow, Lovelace dashboard. PV providers and OpportunityEngine deferred to v2. fmt, clippy (-D warnings), Rust doc-tests, and Python tests (10/10) all clean. Phase 7 partial: CHANGELOG, hacs.json, hardware docs, crates.io dry-run, version bumped to 1.0.0. Deferred (needs GitHub/crates.io): live publish, HACS submission, release tagging, load-shedding (v2).
+
+## Service-level architectural decisions (Phase 5–6)
+
+- `AppState::new` accepts `Arc<RwLock<f32>>` for `setpoint_c` (not `f32`) so the scheduler and API share the same pointer.
+- `EngineConfig` has `#[serde(default)]` at the struct level so partial `[engine]` TOML sections work without requiring every field.
+- HA integration tests stub all `homeassistant.*` modules via `sys.modules` in `conftest.py` — no real HA installation needed. Test container: `docker compose run --rm ha-test pytest`.
+- `axum-test` requires version 20+ for axum 0.8 compatibility (v16 targets axum 0.7).
 
 ## Source-of-truth documents
 

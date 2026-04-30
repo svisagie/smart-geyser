@@ -6,6 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 description = "Hardware-agnostic core logic for the smart-geyser controller: traits, domain models, and pure heat-calculation math."
+keywords = ["geyser", "water-heater", "smart-home", "home-automation", "iot"]
+categories = ["embedded", "science"]
+readme = "README.md"
 
 [lints]
 workspace = true

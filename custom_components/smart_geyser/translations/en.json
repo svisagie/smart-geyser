@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Smart Geyser Service",
+        "description": "Enter the address of your smart-geyser-service instance.",
+        "data": {
+          "host": "Host / IP address",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the service. Check the host and port.",
+      "invalid_response": "The service returned an unexpected response.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This service is already configured."
+    }
+  }
+}

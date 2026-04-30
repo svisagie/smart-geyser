@@ -55,6 +55,37 @@ pub struct DecisionEngine {
 }
 
 impl DecisionEngine {
+    /// Record a hot-water use event into the pattern store.
+    pub fn record_event(&mut self, event: &crate::event_detector::UseEvent) {
+        self.pattern_store.record_event(event);
+    }
+
+    /// Apply exponential decay for `today`.
+    pub fn apply_daily_decay(&mut self, today: chrono::NaiveDate) {
+        self.pattern_store.apply_daily_decay(today);
+    }
+
+    /// Persist the pattern store to `path`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be written.
+    pub fn save_pattern_store(&self, path: &std::path::Path) -> anyhow::Result<()> {
+        self.pattern_store.save_to_path(path)
+    }
+
+    /// Return the next hour whose usage probability meets the preheat threshold.
+    #[must_use]
+    pub fn next_use_window(&self, after: DateTime<Utc>) -> Option<DateTime<Utc>> {
+        self.pattern_store
+            .next_high_probability_window(after, self.config.preheat_threshold)
+    }
+
+    /// Update the heating setpoint for subsequent ticks.
+    pub fn set_setpoint(&mut self, temp_c: f32) {
+        self.config.setpoint_c = temp_c;
+    }
+
     #[must_use]
     pub fn new(config: EngineConfig, pattern_store: PatternStore, shared: SharedState) -> Self {
         Self {

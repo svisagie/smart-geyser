@@ -1,0 +1,78 @@
+title: Smart Geyser
+views:
+  - title: Geyser
+    path: geyser
+    icon: mdi:water-boiler
+    cards:
+      - type: vertical-stack
+        cards:
+          # --- Temperature gauge ---
+          - type: gauge
+            entity: sensor.smart_geyser_tank_temperature
+            name: Tank Temperature
+            unit: "°C"
+            min: 20
+            max: 80
+            severity:
+              green: 55
+              yellow: 40
+              red: 20
+
+          # --- Status badges ---
+          - type: glance
+            title: Status
+            entities:
+              - entity: binary_sensor.smart_geyser_heating_active
+                name: Heating
+                icon: mdi:fire
+              - entity: binary_sensor.smart_geyser_pump_active
+                name: Pump
+                icon: mdi:pump
+              - entity: binary_sensor.smart_geyser_smart_stop_active
+                name: Smart Stop
+                icon: mdi:hand-stop
+              - entity: binary_sensor.smart_geyser_preheat_active
+                name: Pre-heat
+                icon: mdi:clock-fast
+              - entity: binary_sensor.smart_geyser_opportunity_active
+                name: PV Heating
+                icon: mdi:solar-power-variant
+
+          # --- Timing predictions ---
+          - type: entities
+            title: Schedule
+            entities:
+              - entity: sensor.smart_geyser_next_predicted_use
+                name: Next Predicted Use
+                icon: mdi:calendar-clock
+              - entity: sensor.smart_geyser_hot_water_events_today
+                name: Events Today
+                icon: mdi:counter
+              - entity: switch.smart_geyser_manual_boost
+                name: Manual Boost (60 min)
+
+          # --- Setpoint control ---
+          - type: entities
+            title: Settings
+            entities:
+              - entity: number.smart_geyser_setpoint_temperature
+                name: Target Temperature
+
+          # --- PV stats (visible when v2 PV provider configured) ---
+          - type: conditional
+            conditions:
+              - entity: binary_sensor.smart_geyser_opportunity_active
+                state_not: unavailable
+            card:
+              type: glance
+              title: PV System
+              entities:
+                - entity: sensor.smart_geyser_battery_soc
+                  name: Battery SOC
+                  icon: mdi:battery
+                - entity: sensor.smart_geyser_pv_power
+                  name: PV Power
+                  icon: mdi:solar-power
+                - entity: sensor.smart_geyser_grid_power
+                  name: Grid Power
+                  icon: mdi:transmission-tower

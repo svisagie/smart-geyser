@@ -66,11 +66,7 @@ pub mod mock {
 
     impl MockPVProvider {
         /// Create a provider that returns `state` and advertises `capabilities`.
-        pub fn new(
-            state: PVSystemState,
-            capabilities: PVCapabilities,
-            name: &'static str,
-        ) -> Self {
+        pub fn new(state: PVSystemState, capabilities: PVCapabilities, name: &'static str) -> Self {
             Self {
                 state,
                 capabilities,

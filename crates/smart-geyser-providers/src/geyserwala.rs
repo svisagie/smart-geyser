@@ -269,7 +269,9 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("PATCH"))
             .and(path("/api/value"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"external-demand": true})))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(json!({"external-demand": true})),
+            )
             .mount(&server)
             .await;
 
@@ -286,11 +288,17 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("PATCH"))
             .and(path("/api/value"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"external-demand": false})))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(json!({"external-demand": false})),
+            )
             .mount(&server)
             .await;
 
-        provider_for(&server).await.set_element(false).await.unwrap();
+        provider_for(&server)
+            .await
+            .set_element(false)
+            .await
+            .unwrap();
 
         let reqs = server.received_requests().await.unwrap();
         let body: serde_json::Value = serde_json::from_slice(&reqs[0].body).unwrap();
