@@ -173,6 +173,24 @@ impl GeyserProvider for GeyserwalaProvider {
         Ok(())
     }
 
+    async fn set_boost(&self, on: bool) -> anyhow::Result<()> {
+        let url = format!("{}/api/value", self.config.base_url);
+        info!(
+            boost_on = on,
+            url = %url,
+            "Geyserwala PATCH /api/value — setting boost-demand"
+        );
+        self.client
+            .patch(&url)
+            .json(&json!({ "boost-demand": on }))
+            .send()
+            .await
+            .context("PATCH /api/value (boost-demand) request failed")?
+            .error_for_status()
+            .context("Geyserwala returned an error status on set_boost")?;
+        Ok(())
+    }
+
     async fn set_pump(&self, _on: bool) -> anyhow::Result<()> {
         // The Geyserwala firmware manages the collector pump automatically
         // based on collector/tank temperature differential. The API exposes
@@ -185,6 +203,7 @@ impl GeyserProvider for GeyserwalaProvider {
             GeyserCapability::TankTemp,
             GeyserCapability::CollectorTemp,
             GeyserCapability::ElementControl,
+            GeyserCapability::BoostControl,
         ])
     }
 
@@ -334,6 +353,43 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
+    // set_boost
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn set_boost_sends_boost_demand_true() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/api/value"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        provider_for(&server).await.set_boost(true).await.unwrap();
+
+        let reqs = server.received_requests().await.unwrap();
+        assert_eq!(reqs.len(), 1);
+        let body: serde_json::Value = serde_json::from_slice(&reqs[0].body).unwrap();
+        assert_eq!(body["boost-demand"], json!(true));
+    }
+
+    #[tokio::test]
+    async fn set_boost_sends_boost_demand_false() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/api/value"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        provider_for(&server).await.set_boost(false).await.unwrap();
+
+        let reqs = server.received_requests().await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&reqs[0].body).unwrap();
+        assert_eq!(body["boost-demand"], json!(false));
+    }
+
+    // -----------------------------------------------------------------------
     // set_pump
     // -----------------------------------------------------------------------
 
@@ -379,12 +435,13 @@ mod tests {
     // -----------------------------------------------------------------------
 
     #[test]
-    fn capabilities_include_tank_collector_element() {
+    fn capabilities_include_tank_collector_element_boost() {
         let p = GeyserwalaProvider::new(GeyserwalaConfig::default()).unwrap();
         let caps = p.capabilities();
         assert!(caps.contains(&GeyserCapability::TankTemp));
         assert!(caps.contains(&GeyserCapability::CollectorTemp));
         assert!(caps.contains(&GeyserCapability::ElementControl));
+        assert!(caps.contains(&GeyserCapability::BoostControl));
         assert!(!caps.contains(&GeyserCapability::PumpControl));
     }
 

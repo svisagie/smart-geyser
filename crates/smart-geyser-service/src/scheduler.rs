@@ -10,7 +10,7 @@ use tracing::{debug, info, warn};
 
 use smart_geyser_core::decision_engine::{DecisionEngine, DecisionIntent};
 use smart_geyser_core::event_detector::EventDetector;
-use smart_geyser_core::provider::GeyserProvider;
+use smart_geyser_core::provider::{GeyserCapability, GeyserProvider};
 
 use crate::app_state::AppState;
 
@@ -25,10 +25,87 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
+    async fn apply_element_control(
+        &self,
+        intent: &DecisionIntent,
+        has_native_boost: bool,
+        last_boost_active: &mut Option<bool>,
+        last_element_on: &mut Option<bool>,
+    ) {
+        let is_boost = matches!(intent, DecisionIntent::Boost { .. });
+        let element_on = matches!(
+            intent,
+            DecisionIntent::Preheat { .. }
+                | DecisionIntent::Boost { .. }
+                | DecisionIntent::Opportunity { .. }
+        );
+        let read_only = self.app_state.shared.read().await.read_only_mode;
+
+        if has_native_boost {
+            if *last_boost_active != Some(is_boost) {
+                if read_only {
+                    info!(
+                        ?intent,
+                        is_boost,
+                        "read-only — would set boost-demand to {is_boost} but skipping"
+                    );
+                } else {
+                    info!(?intent, is_boost, "native boost state changed");
+                    if let Err(e) = self.geyser.set_boost(is_boost).await {
+                        warn!("set_boost({is_boost}) failed: {e:#}");
+                    }
+                    if !is_boost {
+                        *last_element_on = None;
+                    }
+                }
+            }
+            *last_boost_active = Some(is_boost);
+
+            if !is_boost {
+                if read_only {
+                    if *last_element_on != Some(element_on) {
+                        info!(
+                            ?intent,
+                            element_on,
+                            "read-only — would set element to {element_on} but skipping"
+                        );
+                    }
+                } else if *last_element_on != Some(element_on) {
+                    info!(?intent, element_on, "element state changed");
+                    if let Err(e) = self.geyser.set_element(element_on).await {
+                        warn!("set_element({element_on}) failed: {e:#}");
+                    }
+                }
+                *last_element_on = Some(element_on);
+            }
+        } else {
+            if read_only {
+                if *last_element_on != Some(element_on) {
+                    info!(
+                        ?intent,
+                        element_on,
+                        "read-only — would set element to {element_on} but skipping"
+                    );
+                }
+            } else if *last_element_on != Some(element_on) {
+                info!(?intent, element_on, "element state changed");
+                if let Err(e) = self.geyser.set_element(element_on).await {
+                    warn!("set_element({element_on}) failed: {e:#}");
+                }
+            }
+            *last_element_on = Some(element_on);
+        }
+    }
+
     /// Run the tick loop indefinitely.
     pub async fn run(mut self, tick_interval: Duration) {
+        let has_native_boost = self
+            .geyser
+            .capabilities()
+            .contains(&GeyserCapability::BoostControl);
         let mut last_decay_date: Option<chrono::NaiveDate> = None;
         let mut last_element_on: Option<bool> = None;
+        let mut last_boost_active: Option<bool> = None;
 
         loop {
             let now = Utc::now();
@@ -77,31 +154,14 @@ impl Scheduler {
             let intent = self.engine.tick(&geyser_state, now).await;
             debug!(?intent, tank_temp_c = geyser_state.tank_temp_c, "tick");
 
-            // Apply element control (skipped in read-only mode).
-            let element_on = matches!(
-                intent,
-                DecisionIntent::Preheat { .. }
-                    | DecisionIntent::Boost { .. }
-                    | DecisionIntent::Opportunity { .. }
-            );
-            let read_only = self.app_state.shared.read().await.read_only_mode;
-            if read_only {
-                if last_element_on != Some(element_on) {
-                    info!(
-                        ?intent,
-                        element_on,
-                        "read-only mode — would set element to {element_on} but skipping"
-                    );
-                }
-            } else {
-                if last_element_on != Some(element_on) {
-                    info!(?intent, element_on, "element state changed");
-                }
-                if let Err(e) = self.geyser.set_element(element_on).await {
-                    warn!("set_element({element_on}) failed: {e:#}");
-                }
-            }
-            last_element_on = Some(element_on);
+            // Apply element / boost control.
+            self.apply_element_control(
+                &intent,
+                has_native_boost,
+                &mut last_boost_active,
+                &mut last_element_on,
+            )
+            .await;
 
             // Update the shared snapshot for the API.
             let next_use = self.engine.next_use_window(now);

@@ -47,6 +47,16 @@ pub trait GeyserProvider: Send + Sync {
     /// Command the electric element (or heat-pump compressor) on or off.
     async fn set_element(&self, on: bool) -> anyhow::Result<()>;
 
+    /// Activate or cancel a one-shot boost to the device's configured setpoint.
+    ///
+    /// Only called when `capabilities()` includes `BoostControl`. Providers
+    /// without native boost support may leave this as the default no-op; the
+    /// scheduler will fall back to `set_element` in that case.
+    async fn set_boost(&self, on: bool) -> anyhow::Result<()> {
+        let _ = on;
+        Ok(())
+    }
+
     /// Command the solar-thermal circulation pump on or off.
     async fn set_pump(&self, on: bool) -> anyhow::Result<()>;
 
