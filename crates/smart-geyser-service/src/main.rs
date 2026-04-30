@@ -56,7 +56,10 @@ async fn main() -> anyhow::Result<()> {
     let cfg = ServiceConfig::load(&config_path)
         .with_context(|| format!("failed to load config from {}", config_path.display()))?;
 
-    info!("=== Smart Geyser Controller v{} ===", env!("CARGO_PKG_VERSION"));
+    info!(
+        "=== Smart Geyser Controller v{} ===",
+        env!("CARGO_PKG_VERSION")
+    );
     info!(path = %config_path.display(), "config loaded");
     info!(addr = %cfg.listen_addr, tick_secs = cfg.tick_interval_secs, data_dir = %cfg.data_dir.display(), "service");
     info!(
