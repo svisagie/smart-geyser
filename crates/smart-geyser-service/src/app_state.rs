@@ -35,7 +35,7 @@ pub struct AppState {
     pub provider: ProviderMeta,
     /// Current heating setpoint (°C), adjustable via API.
     pub setpoint_c: Arc<RwLock<f32>>,
-    /// Engine configuration (setpoint excluded — read from setpoint_c).
+    /// Engine configuration (setpoint excluded — read from `setpoint_c`).
     pub engine_config: EngineConfig,
     /// Tick interval in seconds.
     pub tick_interval_secs: u32,

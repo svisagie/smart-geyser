@@ -32,3 +32,43 @@ pub async fn get_config(State(state): State<AppState>) -> Json<ConfigResponse> {
         tick_interval_secs: state.tick_interval_secs,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use axum_test::TestServer;
+    use tokio::sync::RwLock;
+
+    use smart_geyser_core::models::EngineConfig;
+    use smart_geyser_core::shared_state::SharedState;
+    use smart_geyser_core::system::HeatingSystem;
+
+    use crate::app_state::{AppState, ProviderMeta};
+
+    fn make_server() -> TestServer {
+        let state = AppState::new(
+            SharedState::new(),
+            ProviderMeta {
+                geyser_name: "T",
+                system: HeatingSystem::ElectricOnly,
+            },
+            Arc::new(RwLock::new(60.0)),
+            EngineConfig::default(),
+            60,
+        );
+        TestServer::new(super::super::router().with_state(state))
+    }
+
+    #[tokio::test]
+    async fn returns_engine_defaults() {
+        let server = make_server();
+        let resp = server.get("/api/config").await;
+        resp.assert_status_ok();
+        let body = resp.json::<serde_json::Value>();
+        assert_eq!(body["setpoint_c"], 60.0);
+        assert_eq!(body["hysteresis_c"], 4.0);
+        assert_eq!(body["preheat_threshold"], 0.4);
+        assert_eq!(body["tick_interval_secs"], 60);
+    }
+}

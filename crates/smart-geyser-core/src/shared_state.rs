@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Default)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct SharedEngineState {
     pub smart_stop_active: bool,
     pub opportunity_active: bool,
@@ -13,7 +14,7 @@ pub struct SharedEngineState {
     pub preheat_active: bool,
     pub boost_until: Option<DateTime<Utc>>,
     pub last_high_temp_event: Option<DateTime<Utc>>,
-    /// When true the scheduler observes and reports but never calls set_element.
+    /// When true the scheduler observes and reports but never calls `set_element`.
     pub read_only_mode: bool,
 }
 

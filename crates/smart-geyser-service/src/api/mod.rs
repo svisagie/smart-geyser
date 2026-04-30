@@ -13,6 +13,7 @@ use crate::app_state::AppState;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/status", get(status::get_status))
+        .route("/api/config", get(config::get_config))
         .route("/api/pv-state", get(pv_state::get_pv_state))
         .route(
             "/api/opportunity-log",
