@@ -1,4 +1,5 @@
 DOMAIN = "smart_geyser"
+DEFAULT_HOST = "smart-geyser"
 DEFAULT_PORT = 8080
 SCAN_INTERVAL = 30  # seconds
 

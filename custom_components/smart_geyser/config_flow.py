@@ -8,7 +8,7 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api_client import CannotConnect, InvalidResponse, SmartGeyserClient
-from .const import CONF_HOST, CONF_PORT, DEFAULT_PORT, DOMAIN
+from .const import CONF_HOST, CONF_PORT, DEFAULT_HOST, DEFAULT_PORT, DOMAIN
 
 
 class SmartGeyserConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -44,7 +44,7 @@ class SmartGeyserConfigFlow(ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_HOST): str,
+                vol.Required(CONF_HOST, default=DEFAULT_HOST): str,
                 vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.Coerce(int),
             }
         )
