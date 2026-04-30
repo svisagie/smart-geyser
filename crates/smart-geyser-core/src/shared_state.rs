@@ -13,6 +13,8 @@ pub struct SharedEngineState {
     pub preheat_active: bool,
     pub boost_until: Option<DateTime<Utc>>,
     pub last_high_temp_event: Option<DateTime<Utc>>,
+    /// When true the scheduler observes and reports but never calls set_element.
+    pub read_only_mode: bool,
 }
 
 #[derive(Clone)]
@@ -58,6 +60,10 @@ impl SharedState {
 
     pub async fn record_high_temp_event(&self, at: DateTime<Utc>) {
         self.0.write().await.last_high_temp_event = Some(at);
+    }
+
+    pub async fn set_read_only(&self, active: bool) {
+        self.0.write().await.read_only_mode = active;
     }
 }
 

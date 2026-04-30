@@ -1,6 +1,7 @@
 //! Pattern-based pre-heat scheduling and smart-stop decision engine.
 
 use chrono::{DateTime, Duration, Utc};
+use tracing::{debug, info};
 
 use crate::heat_calc::heat_lead_time_minutes;
 use crate::models::{EngineConfig, GeyserState};
@@ -125,6 +126,7 @@ impl DecisionEngine {
             drop(snap);
             self.shared.set_preheat(false).await;
             self.shared.set_smart_stop(false).await;
+            info!(%until, "decision: Boost — manual override active");
             return DecisionIntent::Boost { until };
         }
         drop(snap);
@@ -139,11 +141,18 @@ impl DecisionEngine {
                 (now - last).num_days() >= i64::from(self.config.legionella_interval_days)
             }
         };
+        let last_legionella = snap.last_high_temp_event;
         drop(snap);
 
         if needs_legionella && state.tank_temp_c < 65.0 {
             self.shared.set_preheat(true).await;
             self.shared.set_smart_stop(false).await;
+            info!(
+                tank_temp_c = state.tank_temp_c,
+                last_event = ?last_legionella,
+                interval_days = self.config.legionella_interval_days,
+                "decision: Preheat (legionella) — forced 65°C cycle"
+            );
             return DecisionIntent::Preheat { until_temp_c: 65.0 };
         }
 
@@ -163,6 +172,15 @@ impl DecisionEngine {
             .pattern_store
             .probability_at(now + Duration::minutes(i64::from(self.config.cutoff_buffer_min)));
 
+        debug!(
+            lead_minutes,
+            %look_ahead,
+            prob_at_use_time,
+            prob_next_buffer,
+            tank_temp_c = state.tank_temp_c,
+            "tick pattern query"
+        );
+
         // ------------------------------------------------------------------
         // 6. Pre-heat trigger
         // ------------------------------------------------------------------
@@ -171,6 +189,14 @@ impl DecisionEngine {
         {
             self.shared.set_preheat(true).await;
             self.shared.set_smart_stop(false).await;
+            info!(
+                prob = prob_at_use_time,
+                threshold = self.config.preheat_threshold,
+                tank_temp_c = state.tank_temp_c,
+                setpoint_c = self.config.setpoint_c,
+                target_c = self.config.setpoint_c,
+                "decision: Preheat — use probability exceeds threshold"
+            );
             return DecisionIntent::Preheat {
                 until_temp_c: self.config.setpoint_c,
             };
@@ -184,6 +210,12 @@ impl DecisionEngine {
         {
             self.shared.set_smart_stop(true).await;
             self.shared.set_preheat(false).await;
+            info!(
+                prob = prob_next_buffer,
+                threshold = self.config.late_use_threshold,
+                tank_temp_c = state.tank_temp_c,
+                "decision: SmartStop — late-day use probability below threshold"
+            );
             return DecisionIntent::SmartStop;
         }
 
@@ -192,6 +224,7 @@ impl DecisionEngine {
         // ------------------------------------------------------------------
         self.shared.set_preheat(false).await;
         self.shared.set_smart_stop(false).await;
+        debug!(tank_temp_c = state.tank_temp_c, "decision: Idle");
         DecisionIntent::Idle
     }
 }

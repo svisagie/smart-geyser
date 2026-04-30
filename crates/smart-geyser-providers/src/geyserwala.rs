@@ -18,6 +18,7 @@ use reqwest::header::{self, HeaderMap, HeaderValue};
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::json;
+use tracing::{debug, info};
 
 use smart_geyser_core::models::GeyserState;
 use smart_geyser_core::provider::{GeyserCapabilities, GeyserCapability, GeyserProvider};
@@ -132,7 +133,7 @@ impl GeyserProvider for GeyserwalaProvider {
             .await
             .context("failed to parse Geyserwala state response")?;
 
-        Ok(GeyserState {
+        let state = GeyserState {
             timestamp: Utc::now(),
             tank_temp_c: raw.tank_temp,
             collector_temp_c: raw.collector_temp,
@@ -140,12 +141,26 @@ impl GeyserProvider for GeyserwalaProvider {
             heating_active: raw.element_demand,
             element_kw: self.config.element_kw,
             tank_volume_l: self.config.tank_volume_l,
-        })
+        };
+        debug!(
+            tank_temp_c = state.tank_temp_c,
+            collector_temp_c = ?state.collector_temp_c,
+            pump_active = ?state.pump_active,
+            heating_active = state.heating_active,
+            url = %url,
+            "Geyserwala GET /api/value"
+        );
+        Ok(state)
     }
 
     async fn set_element(&self, on: bool) -> anyhow::Result<()> {
         let url = format!("{}/api/value", self.config.base_url);
-
+        info!(
+            element_on = on,
+            payload = ?json!({ "external-demand": on }),
+            url = %url,
+            "Geyserwala PATCH /api/value — setting external-demand"
+        );
         self.client
             .patch(&url)
             .json(&json!({ "external-demand": on }))

@@ -13,8 +13,8 @@
 ## 2. HACS listing
 
 - [x] 2.1 Create `hacs.json`: `{"name": "Smart Geyser Controller", "category": "integration"}`
-- [ ] 2.2 Ensure repo meets HACS requirements (needs public GitHub repo + release tag)
-- [ ] 2.3 Submit PR to hacs/default (deferred — needs public repo)
+- [x] 2.2 Ensure repo meets HACS requirements — public GitHub repo at https://github.com/svisagie/smart-geyser, v1.0.0 tag pushed, custom_components/ at repo root
+- [ ] 2.3 Submit PR to hacs/default (deferred — needs 30-day public repo age)
 - [ ] 2.4 Verify in HACS UI (deferred)
 - [ ] 2.5 Add HACS badge to README (deferred)
 
@@ -49,13 +49,13 @@
 
 - [x] 7.1 `CHANGELOG.md` written with Phase 1–7 sections
 - [x] 7.2 Version bumped to `1.0.0` in workspace Cargo.toml, manifest.json, addon/config.yaml
-- [ ] 7.3 Tag `v1.0.0` and push to GitHub (deferred — requires GitHub remote)
-- [ ] 7.4 Create GitHub Release (deferred)
-- [ ] 7.5 HACS picks up new version (deferred)
+- [x] 7.3 Tag `v1.0.0` pushed to https://github.com/svisagie/smart-geyser
+- [ ] 7.4 Create GitHub Release (triggered by release.yml workflow on v1.0.0 tag push)
+- [ ] 7.5 HACS picks up new version (deferred — verify after release workflow completes)
 
 ## 8. Phase 7 wrap-up
 
 - [x] 8.1 Open spec questions addressed (load-shedding and crates.io noted above)
 - [x] 8.2 `cargo test --workspace` + `pytest` still green after all changes
 - [x] 8.3 Update [CLAUDE.md](../CLAUDE.md) to reflect post-v1 state
-- [ ] 8.4 Tag commit `phase-7-complete` (deferred — needs git remote)
+- [x] 8.4 Tag commit `phase-7-complete` — repo live at https://github.com/svisagie/smart-geyser

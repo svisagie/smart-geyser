@@ -5,7 +5,7 @@ use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use tokio::sync::RwLock;
 
-use smart_geyser_core::models::GeyserState;
+use smart_geyser_core::models::{EngineConfig, GeyserState};
 use smart_geyser_core::shared_state::SharedState;
 use smart_geyser_core::system::HeatingSystem;
 
@@ -35,16 +35,28 @@ pub struct AppState {
     pub provider: ProviderMeta,
     /// Current heating setpoint (°C), adjustable via API.
     pub setpoint_c: Arc<RwLock<f32>>,
+    /// Engine configuration (setpoint excluded — read from setpoint_c).
+    pub engine_config: EngineConfig,
+    /// Tick interval in seconds.
+    pub tick_interval_secs: u32,
 }
 
 impl AppState {
     #[must_use]
-    pub fn new(shared: SharedState, provider: ProviderMeta, setpoint_c: Arc<RwLock<f32>>) -> Self {
+    pub fn new(
+        shared: SharedState,
+        provider: ProviderMeta,
+        setpoint_c: Arc<RwLock<f32>>,
+        engine_config: EngineConfig,
+        tick_interval_secs: u32,
+    ) -> Self {
         Self {
             shared,
             snapshot: Arc::new(RwLock::new(TickSnapshot::default())),
             provider,
             setpoint_c,
+            engine_config,
+            tick_interval_secs,
         }
     }
 }

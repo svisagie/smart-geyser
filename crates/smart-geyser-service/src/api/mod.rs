@@ -1,6 +1,8 @@
 pub mod boost;
+pub mod config;
 pub mod opportunity;
 pub mod pv_state;
+pub mod read_only;
 pub mod status;
 
 use axum::routing::{get, post};
@@ -21,4 +23,8 @@ pub fn router() -> Router<AppState> {
             post(boost::post_boost).delete(boost::delete_boost),
         )
         .route("/api/setpoint", post(boost::post_setpoint))
+        .route(
+            "/api/read-only",
+            post(read_only::enable).delete(read_only::disable),
+        )
 }

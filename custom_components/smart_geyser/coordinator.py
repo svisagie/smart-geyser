@@ -7,7 +7,7 @@ from datetime import timedelta
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api_client import CannotConnect, GeyserStatus, InvalidResponse, SmartGeyserClient
+from .api_client import CannotConnect, GeyserConfig, GeyserStatus, InvalidResponse, SmartGeyserClient
 from .const import DOMAIN, SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
@@ -24,6 +24,7 @@ class SmartGeyserCoordinator(DataUpdateCoordinator[GeyserStatus]):
             update_interval=timedelta(seconds=SCAN_INTERVAL),
         )
         self.client = client
+        self.addon_config: GeyserConfig | None = None
 
     async def _async_update_data(self) -> GeyserStatus:
         try:

@@ -1613,6 +1613,7 @@ dependencies = [
  "serde_json",
  "thiserror 1.0.69",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -1628,6 +1629,7 @@ dependencies = [
  "serde_json",
  "smart-geyser-core",
  "tokio",
+ "tracing",
  "wiremock",
 ]
 

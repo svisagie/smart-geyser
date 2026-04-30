@@ -20,7 +20,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: SmartGeyserCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([SmartGeyserBoostSwitch(coordinator, entry)])
+    async_add_entities([
+        SmartGeyserBoostSwitch(coordinator, entry),
+        SmartGeyserReadOnlySwitch(coordinator, entry),
+    ])
 
 
 class SmartGeyserBoostSwitch(CoordinatorEntity[SmartGeyserCoordinator], SwitchEntity):
@@ -56,4 +59,39 @@ class SmartGeyserBoostSwitch(CoordinatorEntity[SmartGeyserCoordinator], SwitchEn
 
     async def async_turn_off(self, **kwargs: object) -> None:
         await self.coordinator.client.delete_boost()
+        await self.coordinator.async_request_refresh()
+
+
+class SmartGeyserReadOnlySwitch(CoordinatorEntity[SmartGeyserCoordinator], SwitchEntity):
+    """Suspend element control — engine still observes and reports, but sends no commands."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Read-Only Mode"
+    _attr_device_class = SwitchDeviceClass.SWITCH
+    _attr_icon = "mdi:eye-outline"
+
+    def __init__(
+        self,
+        coordinator: SmartGeyserCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_read_only"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry.entry_id)},
+            "name": "Smart Geyser Controller",
+        }
+
+    @property
+    def is_on(self) -> bool:
+        if self.coordinator.data is None:
+            return False
+        return self.coordinator.data.read_only_mode
+
+    async def async_turn_on(self, **kwargs: object) -> None:
+        await self.coordinator.client.enable_read_only()
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_off(self, **kwargs: object) -> None:
+        await self.coordinator.client.disable_read_only()
         await self.coordinator.async_request_refresh()

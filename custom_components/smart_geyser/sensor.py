@@ -12,11 +12,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfEnergy, UnitOfPower, UnitOfTemperature
+from homeassistant.const import EntityCategory, UnitOfEnergy, UnitOfPower, UnitOfTemperature, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api_client import GeyserConfig
 from .const import DOMAIN
 from .coordinator import SmartGeyserCoordinator
 
@@ -85,15 +86,77 @@ SENSOR_DESCRIPTIONS: tuple[SmartGeyserSensorDescription, ...] = (
 )
 
 
+@dataclass(frozen=True, kw_only=True)
+class SmartGeyserConfigSensorDescription(SensorEntityDescription):
+    """Extends SensorEntityDescription with a GeyserConfig value extractor."""
+
+    value_fn: Any = None  # callable(GeyserConfig) -> value
+
+
+CONFIG_SENSOR_DESCRIPTIONS: tuple[SmartGeyserConfigSensorDescription, ...] = (
+    SmartGeyserConfigSensorDescription(
+        key="cfg_setpoint",
+        name="Configured Setpoint",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda c: c.setpoint_c,
+    ),
+    SmartGeyserConfigSensorDescription(
+        key="cfg_hysteresis",
+        name="Hysteresis Band",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda c: c.hysteresis_c,
+    ),
+    SmartGeyserConfigSensorDescription(
+        key="cfg_preheat_threshold",
+        name="Preheat Probability Threshold",
+        native_unit_of_measurement="%",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda c: round(c.preheat_threshold * 100, 1),
+    ),
+    SmartGeyserConfigSensorDescription(
+        key="cfg_late_use_threshold",
+        name="Late-Use Probability Threshold",
+        native_unit_of_measurement="%",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda c: round(c.late_use_threshold * 100, 1),
+    ),
+    SmartGeyserConfigSensorDescription(
+        key="cfg_legionella_interval",
+        name="Legionella Cycle Interval",
+        native_unit_of_measurement="d",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda c: c.legionella_interval_days,
+    ),
+    SmartGeyserConfigSensorDescription(
+        key="cfg_tick_interval",
+        name="Poll Interval",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda c: c.tick_interval_secs,
+    ),
+)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: SmartGeyserCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
+    entities: list[SensorEntity] = [
         SmartGeyserSensor(coordinator, entry, desc) for desc in SENSOR_DESCRIPTIONS
-    )
+    ]
+    if coordinator.addon_config is not None:
+        entities += [
+            SmartGeyserConfigSensor(coordinator, entry, desc)
+            for desc in CONFIG_SENSOR_DESCRIPTIONS
+        ]
+    async_add_entities(entities)
 
 
 class SmartGeyserSensor(CoordinatorEntity[SmartGeyserCoordinator], SensorEntity):
@@ -129,3 +192,38 @@ class SmartGeyserSensor(CoordinatorEntity[SmartGeyserCoordinator], SensorEntity)
     @property
     def available(self) -> bool:
         return self.coordinator.last_update_success and self.coordinator.data is not None
+
+
+class SmartGeyserConfigSensor(CoordinatorEntity[SmartGeyserCoordinator], SensorEntity):
+    """A diagnostic sensor backed by the static add-on configuration."""
+
+    entity_description: SmartGeyserConfigSensorDescription
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: SmartGeyserCoordinator,
+        entry: ConfigEntry,
+        description: SmartGeyserConfigSensorDescription,
+    ) -> None:
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry.entry_id)},
+            "name": "Smart Geyser Controller",
+        }
+
+    @property
+    def native_value(self) -> Any:
+        cfg: GeyserConfig | None = self.coordinator.addon_config
+        if cfg is None:
+            return None
+        try:
+            return self.entity_description.value_fn(cfg)
+        except (AttributeError, KeyError, TypeError):
+            return None
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.addon_config is not None

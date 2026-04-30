@@ -44,6 +44,7 @@ def mock_status() -> GeyserStatus:
         heating_active=False,
         smart_stop_active=False,
         preheat_active=False,
+        read_only_mode=False,
         boost_until=None,
         next_predicted_use=None,
         preheat_starts_at=None,

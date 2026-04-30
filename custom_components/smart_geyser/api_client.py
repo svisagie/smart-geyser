@@ -17,6 +17,35 @@ class InvalidResponse(Exception):
 
 
 @dataclass
+class GeyserConfig:
+    """Parsed /api/config response — static for the lifetime of the add-on."""
+
+    setpoint_c: float
+    hysteresis_c: float
+    preheat_threshold: float
+    late_use_threshold: float
+    cutoff_buffer_min: int
+    safety_margin_min: int
+    legionella_interval_days: int
+    decay_factor: float
+    tick_interval_secs: int
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "GeyserConfig":
+        return cls(
+            setpoint_c=data["setpoint_c"],
+            hysteresis_c=data["hysteresis_c"],
+            preheat_threshold=data["preheat_threshold"],
+            late_use_threshold=data["late_use_threshold"],
+            cutoff_buffer_min=data["cutoff_buffer_min"],
+            safety_margin_min=data["safety_margin_min"],
+            legionella_interval_days=data["legionella_interval_days"],
+            decay_factor=data["decay_factor"],
+            tick_interval_secs=data["tick_interval_secs"],
+        )
+
+
+@dataclass
 class GeyserStatus:
     """Parsed /api/status response."""
 
@@ -28,6 +57,7 @@ class GeyserStatus:
     heating_active: bool | None
     smart_stop_active: bool
     preheat_active: bool
+    read_only_mode: bool
     boost_until: datetime | None
     next_predicted_use: datetime | None
     preheat_starts_at: datetime | None
@@ -55,6 +85,7 @@ class GeyserStatus:
             heating_active=data.get("heating_active"),
             smart_stop_active=data.get("smart_stop_active", False),
             preheat_active=data.get("preheat_active", False),
+            read_only_mode=data.get("read_only_mode", False),
             boost_until=cls._parse_dt(data.get("boost_until")),
             next_predicted_use=cls._parse_dt(data.get("next_predicted_use")),
             preheat_starts_at=cls._parse_dt(data.get("preheat_starts_at")),
@@ -115,6 +146,22 @@ class SmartGeyserClient:
             raise CannotConnect(f"Cannot connect to {self._base}: {exc}") from exc
         except aiohttp.ClientError as exc:
             raise CannotConnect(str(exc)) from exc
+
+    async def get_config(self) -> GeyserConfig:
+        """Return the add-on's current configuration."""
+        try:
+            data = await self._get("/api/config")
+            return GeyserConfig.from_dict(data)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise InvalidResponse(f"Unexpected /api/config shape: {exc}") from exc
+
+    async def enable_read_only(self) -> None:
+        """Put the service into read-only (observe-only) mode."""
+        await self._post("/api/read-only", {})
+
+    async def disable_read_only(self) -> None:
+        """Resume normal element control."""
+        await self._delete("/api/read-only")
 
     async def get_status(self) -> GeyserStatus:
         """Return the current service status."""

@@ -27,6 +27,9 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "serd
 anyhow = "1"
 thiserror = "1"
 
+# Observability
+tracing = "0.1"
+
 # Test utilities
 pretty_assertions = "1"
 rstest = "0.23"

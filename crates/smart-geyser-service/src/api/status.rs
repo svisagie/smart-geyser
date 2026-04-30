@@ -17,6 +17,7 @@ pub struct StatusResponse {
     pub heating_active: Option<bool>,
     pub smart_stop_active: bool,
     pub preheat_active: bool,
+    pub read_only_mode: bool,
     pub boost_until: Option<DateTime<Utc>>,
     pub next_predicted_use: Option<DateTime<Utc>>,
     pub preheat_starts_at: Option<DateTime<Utc>>,
@@ -54,6 +55,7 @@ pub async fn get_status(State(state): State<AppState>) -> Json<StatusResponse> {
         heating_active,
         smart_stop_active: shared.smart_stop_active,
         preheat_active: shared.preheat_active,
+        read_only_mode: shared.read_only_mode,
         boost_until: shared.boost_until,
         next_predicted_use: snap.next_predicted_use,
         preheat_starts_at: snap.preheat_starts_at,
@@ -78,7 +80,13 @@ mod tests {
             geyser_name: "Test Provider",
             system: HeatingSystem::SolarPumped,
         };
-        let state = AppState::new(SharedState::new(), provider, Arc::new(RwLock::new(60.0)));
+        let state = AppState::new(
+            SharedState::new(),
+            provider,
+            Arc::new(RwLock::new(60.0)),
+            smart_geyser_core::models::EngineConfig::default(),
+            60,
+        );
         let router = super::super::router().with_state(state);
         TestServer::new(router)
     }
