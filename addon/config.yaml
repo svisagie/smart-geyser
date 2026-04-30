@@ -1,5 +1,5 @@
 name: Smart Geyser Controller
-version: "1.0.1"
+version: "1.0.2"
 slug: smart_geyser
 description: Pattern-learning hot-water geyser controller with optional PV opportunity heating.
 url: https://github.com/svisagie/smart-geyser
