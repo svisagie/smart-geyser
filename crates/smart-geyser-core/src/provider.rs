@@ -23,6 +23,8 @@ pub enum GeyserCapability {
     ElementControl,
     /// Provider supports a manual boost mode distinct from element on/off.
     BoostControl,
+    /// Provider can read and write the heating setpoint temperature.
+    SetpointControl,
     /// Provider can report hardware fault status.
     FaultStatus,
 }
@@ -54,6 +56,23 @@ pub trait GeyserProvider: Send + Sync {
     /// scheduler will fall back to `set_element` in that case.
     async fn set_boost(&self, on: bool) -> anyhow::Result<()> {
         let _ = on;
+        Ok(())
+    }
+
+    /// Read the device's current heating setpoint (°C).
+    ///
+    /// Only called when `capabilities()` includes `SetpointControl`. Returns
+    /// `Ok(None)` by default; the scheduler will use the configured value instead.
+    async fn get_setpoint(&self) -> anyhow::Result<Option<f32>> {
+        Ok(None)
+    }
+
+    /// Push a new heating setpoint (°C) to the device.
+    ///
+    /// Only called when `capabilities()` includes `SetpointControl`. Default
+    /// is a no-op for providers that do not manage their own setpoint.
+    async fn set_setpoint(&self, temp_c: f32) -> anyhow::Result<()> {
+        let _ = temp_c;
         Ok(())
     }
 

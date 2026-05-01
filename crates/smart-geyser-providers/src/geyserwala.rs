@@ -109,6 +109,11 @@ struct RawState {
     pump_status: Option<bool>,
 }
 
+#[derive(Deserialize)]
+struct RawSetpoint {
+    setpoint: f32,
+}
+
 // ---------------------------------------------------------------------------
 // Trait impl
 // ---------------------------------------------------------------------------
@@ -173,6 +178,41 @@ impl GeyserProvider for GeyserwalaProvider {
         Ok(())
     }
 
+    async fn get_setpoint(&self) -> anyhow::Result<Option<f32>> {
+        let url = format!("{}/api/value?f=setpoint", self.config.base_url);
+        let raw: RawSetpoint = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .context("GET /api/value?f=setpoint request failed")?
+            .error_for_status()
+            .context("Geyserwala returned an error status on get_setpoint")?
+            .json()
+            .await
+            .context("failed to parse Geyserwala setpoint response")?;
+        debug!(setpoint_c = raw.setpoint, "Geyserwala GET setpoint");
+        Ok(Some(raw.setpoint))
+    }
+
+    async fn set_setpoint(&self, temp_c: f32) -> anyhow::Result<()> {
+        let url = format!("{}/api/value", self.config.base_url);
+        info!(
+            setpoint_c = temp_c,
+            url = %url,
+            "Geyserwala PATCH /api/value — updating setpoint"
+        );
+        self.client
+            .patch(&url)
+            .json(&json!({ "setpoint": temp_c }))
+            .send()
+            .await
+            .context("PATCH /api/value (setpoint) request failed")?
+            .error_for_status()
+            .context("Geyserwala returned an error status on set_setpoint")?;
+        Ok(())
+    }
+
     async fn set_boost(&self, on: bool) -> anyhow::Result<()> {
         let url = format!("{}/api/value", self.config.base_url);
         info!(
@@ -204,6 +244,7 @@ impl GeyserProvider for GeyserwalaProvider {
             GeyserCapability::CollectorTemp,
             GeyserCapability::ElementControl,
             GeyserCapability::BoostControl,
+            GeyserCapability::SetpointControl,
         ])
     }
 
@@ -353,6 +394,44 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
+    // get_setpoint / set_setpoint
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn get_setpoint_returns_device_value() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/value"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"setpoint": 65.0})))
+            .mount(&server)
+            .await;
+
+        let result = provider_for(&server).await.get_setpoint().await.unwrap();
+        assert_eq!(result, Some(65.0));
+    }
+
+    #[tokio::test]
+    async fn set_setpoint_sends_correct_field() {
+        let server = MockServer::start().await;
+        Mock::given(method("PATCH"))
+            .and(path("/api/value"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        provider_for(&server)
+            .await
+            .set_setpoint(62.0)
+            .await
+            .unwrap();
+
+        let reqs = server.received_requests().await.unwrap();
+        assert_eq!(reqs.len(), 1);
+        let body: serde_json::Value = serde_json::from_slice(&reqs[0].body).unwrap();
+        assert_eq!(body["setpoint"], json!(62.0));
+    }
+
+    // -----------------------------------------------------------------------
     // set_boost
     // -----------------------------------------------------------------------
 
@@ -435,13 +514,14 @@ mod tests {
     // -----------------------------------------------------------------------
 
     #[test]
-    fn capabilities_include_tank_collector_element_boost() {
+    fn capabilities_include_tank_collector_element_boost_setpoint() {
         let p = GeyserwalaProvider::new(GeyserwalaConfig::default()).unwrap();
         let caps = p.capabilities();
         assert!(caps.contains(&GeyserCapability::TankTemp));
         assert!(caps.contains(&GeyserCapability::CollectorTemp));
         assert!(caps.contains(&GeyserCapability::ElementControl));
         assert!(caps.contains(&GeyserCapability::BoostControl));
+        assert!(caps.contains(&GeyserCapability::SetpointControl));
         assert!(!caps.contains(&GeyserCapability::PumpControl));
     }
 

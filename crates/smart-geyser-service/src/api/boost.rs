@@ -4,6 +4,7 @@ use axum::response::IntoResponse;
 use chrono::Utc;
 use serde::Deserialize;
 use serde_json::json;
+use tracing::info;
 
 use crate::app_state::AppState;
 
@@ -56,8 +57,10 @@ pub async fn post_setpoint(
             .into_response();
     }
 
+    let old = *state.setpoint_c.read().await;
     *state.setpoint_c.write().await = body.temp_c;
-    Json(json!({"ok": true})).into_response()
+    info!(old_setpoint_c = old, new_setpoint_c = body.temp_c, "setpoint updated via API");
+    Json(json!({"ok": true, "setpoint_c": body.temp_c})).into_response()
 }
 
 #[cfg(test)]

@@ -9,12 +9,12 @@ use std::time::Duration;
 
 use anyhow::Context;
 use tokio::sync::RwLock;
-use tracing::info;
+use tracing::{info, warn};
 
 use smart_geyser_core::decision_engine::DecisionEngine;
 use smart_geyser_core::event_detector::{EventDetector, EventDetectorConfig};
 use smart_geyser_core::pattern_store::PatternStore;
-use smart_geyser_core::provider::GeyserProvider;
+use smart_geyser_core::provider::{GeyserCapability, GeyserProvider};
 use smart_geyser_core::shared_state::SharedState;
 use smart_geyser_providers::geyserwala::GeyserwalaProvider;
 
@@ -99,9 +99,32 @@ async fn main() -> anyhow::Result<()> {
     let mut engine_config = cfg.engine.clone();
     engine_config.system = geyser.system();
 
+    // If the provider exposes its setpoint, read it now — it is authoritative
+    // over the config file so there is only one place to configure it.
+    let initial_setpoint =
+        if geyser.capabilities().contains(&GeyserCapability::SetpointControl) {
+            match geyser.get_setpoint().await {
+                Ok(Some(sp)) => {
+                    info!(
+                        device_setpoint_c = sp,
+                        config_setpoint_c = engine_config.setpoint_c,
+                        "device setpoint overrides config"
+                    );
+                    sp
+                }
+                Ok(None) => engine_config.setpoint_c,
+                Err(e) => {
+                    warn!("could not read setpoint from device: {e:#} — using config value");
+                    engine_config.setpoint_c
+                }
+            }
+        } else {
+            engine_config.setpoint_c
+        };
+
     // Shared state and setpoint Arc (scheduler and API share the same instance).
     let shared = SharedState::new();
-    let setpoint_arc = Arc::new(RwLock::new(engine_config.setpoint_c));
+    let setpoint_arc = Arc::new(RwLock::new(initial_setpoint));
     let app_state = AppState::new(
         shared.clone(),
         provider_meta,

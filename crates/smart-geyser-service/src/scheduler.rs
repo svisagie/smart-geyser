@@ -99,13 +99,15 @@ impl Scheduler {
 
     /// Run the tick loop indefinitely.
     pub async fn run(mut self, tick_interval: Duration) {
-        let has_native_boost = self
-            .geyser
-            .capabilities()
-            .contains(&GeyserCapability::BoostControl);
+        let caps = self.geyser.capabilities();
+        let has_native_boost = caps.contains(&GeyserCapability::BoostControl);
+        let has_setpoint_control = caps.contains(&GeyserCapability::SetpointControl);
         let mut last_decay_date: Option<chrono::NaiveDate> = None;
         let mut last_element_on: Option<bool> = None;
         let mut last_boost_active: Option<bool> = None;
+        // Initialise to the current value so we don't push on the very first tick.
+        let initial_sp = *self.setpoint_c.read().await;
+        let mut last_pushed_setpoint: f32 = initial_sp;
 
         loop {
             let now = Utc::now();
@@ -113,6 +115,17 @@ impl Scheduler {
             // Sync setpoint from the shared value (API may have updated it).
             let sp = *self.setpoint_c.read().await;
             self.engine.set_setpoint(sp);
+
+            // Push setpoint to device on change (device is the authoritative source,
+            // but the API can override it at runtime).
+            if has_setpoint_control && (sp - last_pushed_setpoint).abs() > f32::EPSILON {
+                info!(setpoint_c = sp, "setpoint changed — pushing to device");
+                if let Err(e) = self.geyser.set_setpoint(sp).await {
+                    warn!("set_setpoint({sp}) failed: {e:#}");
+                } else {
+                    last_pushed_setpoint = sp;
+                }
+            }
 
             // Apply daily decay once per calendar day.
             let today = now.date_naive();
