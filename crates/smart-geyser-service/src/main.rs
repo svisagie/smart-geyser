@@ -20,7 +20,7 @@ use smart_geyser_providers::geyserwala::GeyserwalaProvider;
 use smart_geyser_providers::geyserwala_mqtt::GeyserwalaMqttProvider;
 
 use app_state::{AppState, ProviderMeta};
-use config::{GeyserProviderConfig, ServiceConfig};
+use config::{GeyserProviderConfig, ProviderConfigOverlay, ServiceConfig};
 use scheduler::Scheduler;
 
 fn parse_config_path() -> Option<PathBuf> {
@@ -54,9 +54,10 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let config_path = parse_config_path().unwrap_or_else(|| PathBuf::from("config.toml"));
-    let cfg = ServiceConfig::load(&config_path)
+    let mut cfg = ServiceConfig::load(&config_path)
         .with_context(|| format!("failed to load config from {}", config_path.display()))?;
 
+    apply_provider_overlay(&mut cfg);
     log_startup_config(&cfg, &config_path);
 
     // Build geyser provider.
@@ -121,7 +122,9 @@ async fn main() -> anyhow::Result<()> {
         Arc::clone(&setpoint_arc),
         engine_config.clone(),
         cfg.tick_interval_secs,
+        cfg.data_dir.clone(),
     );
+    let mut shutdown_rx = app_state.subscribe_shutdown();
 
     let engine = DecisionEngine::new(engine_config, pattern_store, shared);
     let detector = EventDetector::new(EventDetectorConfig::default());
@@ -149,10 +152,31 @@ async fn main() -> anyhow::Result<()> {
     info!(addr = %cfg.listen_addr, "starting smart-geyser-service");
     let listener = tokio::net::TcpListener::bind(cfg.listen_addr).await?;
     axum::serve(listener, router)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(async move {
+            tokio::select! {
+                () = shutdown_signal() => {}
+                _ = shutdown_rx.changed() => {
+                    info!("provider config updated — shutting down for restart");
+                }
+            }
+        })
         .await?;
 
     Ok(())
+}
+
+fn apply_provider_overlay(cfg: &mut ServiceConfig) {
+    let overlay_path = cfg.data_dir.join("provider-config.json");
+    if !overlay_path.exists() {
+        return;
+    }
+    match ProviderConfigOverlay::load(&overlay_path) {
+        Ok(overlay) => {
+            info!("loaded provider config from {}", overlay_path.display());
+            cfg.geyser = overlay.geyser;
+        }
+        Err(e) => warn!("ignoring invalid provider-config.json: {e:#}"),
+    }
 }
 
 fn log_startup_config(cfg: &ServiceConfig, config_path: &std::path::Path) {

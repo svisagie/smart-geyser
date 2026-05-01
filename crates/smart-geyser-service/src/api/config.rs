@@ -56,6 +56,7 @@ mod tests {
             Arc::new(RwLock::new(60.0)),
             EngineConfig::default(),
             60,
+            std::path::PathBuf::new(),
         );
         TestServer::new(super::super::router().with_state(state))
     }

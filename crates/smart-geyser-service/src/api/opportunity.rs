@@ -28,6 +28,7 @@ mod tests {
             Arc::new(RwLock::new(60.0)),
             smart_geyser_core::models::EngineConfig::default(),
             60,
+            std::path::PathBuf::new(),
         );
         let server = TestServer::new(super::super::router().with_state(state));
         let resp = server.get("/api/opportunity-log").await;

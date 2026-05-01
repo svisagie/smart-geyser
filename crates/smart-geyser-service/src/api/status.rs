@@ -89,6 +89,7 @@ mod tests {
             Arc::new(RwLock::new(60.0)),
             smart_geyser_core::models::EngineConfig::default(),
             60,
+            std::path::PathBuf::new(),
         );
         let router = super::super::router().with_state(state);
         TestServer::new(router)

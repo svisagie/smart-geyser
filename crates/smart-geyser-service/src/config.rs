@@ -12,6 +12,42 @@ use smart_geyser_providers::geyserwala::GeyserwalaConfig;
 use smart_geyser_providers::geyserwala_mqtt::GeyserwalaMqttConfig;
 
 // ---------------------------------------------------------------------------
+// Provider-only config overlay (written by POST /api/provider-config)
+// ---------------------------------------------------------------------------
+
+/// Subset of config persisted to `/data/provider-config.json` by the options
+/// flow. Loaded at startup and overlaid on top of `options.json` so the HA
+/// integration UI is the single source of truth for provider settings.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderConfigOverlay {
+    pub geyser: GeyserProviderConfig,
+}
+
+impl ProviderConfigOverlay {
+    /// Load from JSON file.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be read or parsed.
+    pub fn load(path: &std::path::Path) -> anyhow::Result<Self> {
+        let raw = std::fs::read_to_string(path)
+            .with_context(|| format!("cannot read {}", path.display()))?;
+        serde_json::from_str(&raw)
+            .with_context(|| format!("invalid provider config in {}", path.display()))
+    }
+
+    /// Persist to JSON file (pretty-printed for human readability).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be written.
+    pub fn save(&self, path: &std::path::Path) -> anyhow::Result<()> {
+        let json = serde_json::to_string_pretty(self).context("serialisation failed")?;
+        std::fs::write(path, json).with_context(|| format!("cannot write {}", path.display()))
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Top-level
 // ---------------------------------------------------------------------------
 
@@ -48,6 +84,7 @@ fn default_tick_interval() -> u32 {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum GeyserProviderConfig {
     Geyserwala(GeyserwalaTomlConfig),
+    #[serde(rename = "geyserwala_mqtt")]
     GeyserwalaaMqtt(GeyserwalaaMqttTomlConfig),
 }
 

@@ -2,6 +2,7 @@ pub mod boost;
 pub mod config;
 pub mod events;
 pub mod opportunity;
+pub mod provider_config;
 pub mod pv_state;
 pub mod read_only;
 pub mod status;
@@ -26,6 +27,10 @@ pub fn router() -> Router<AppState> {
         )
         .route("/api/setpoint", post(boost::post_setpoint))
         .route("/api/events", get(events::get_events))
+        .route(
+            "/api/provider-config",
+            get(provider_config::get_provider_config).post(provider_config::post_provider_config),
+        )
         .route(
             "/api/read-only",
             post(read_only::enable).delete(read_only::disable),

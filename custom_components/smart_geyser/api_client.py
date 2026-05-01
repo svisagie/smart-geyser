@@ -186,6 +186,18 @@ class SmartGeyserClient:
         """Update the heating setpoint (40–75 °C)."""
         await self._post("/api/setpoint", {"temp_c": temp_c})
 
+    async def get_provider_config(self) -> dict[str, Any]:
+        """Return the current provider configuration (empty dict if not yet set)."""
+        try:
+            data = await self._get("/api/provider-config")
+            return data.get("geyser") or {}
+        except (CannotConnect, InvalidResponse):
+            return {}
+
+    async def set_provider_config(self, config: dict[str, Any]) -> None:
+        """Push new provider configuration; the service will restart to apply it."""
+        await self._post("/api/provider-config", {"geyser": config})
+
     async def stream_status(self) -> AsyncGenerator[GeyserStatus, None]:
         """Yield GeyserStatus objects from the SSE /api/events endpoint."""
         sse_timeout = aiohttp.ClientTimeout(total=None, connect=10, sock_read=None)

@@ -19,6 +19,43 @@
       "already_configured": "This service is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Provider type",
+        "description": "Select how the add-on connects to your geyser hardware. The add-on will restart to apply the new settings.",
+        "data": {
+          "provider_type": "Connection type"
+        }
+      },
+      "rest_config": {
+        "title": "Geyserwala — REST / HTTP",
+        "data": {
+          "base_url": "Geyserwala URL",
+          "token": "API token (leave blank if none)",
+          "element_kw": "Element power (kW)",
+          "tank_volume_l": "Tank volume (L)"
+        }
+      },
+      "mqtt_config": {
+        "title": "Geyserwala — MQTT",
+        "data": {
+          "broker_host": "MQTT broker host",
+          "broker_port": "MQTT broker port",
+          "device_id": "Device ID (MAC address, e.g. AABBCCDDEEFF)",
+          "topic_prefix": "Topic prefix",
+          "username": "Username (leave blank if none)",
+          "password": "Password (leave blank if none)",
+          "element_kw": "Element power (kW)",
+          "tank_volume_l": "Tank volume (L)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the service. Check the add-on is running.",
+      "save_failed": "Failed to save configuration to the add-on."
+    }
+  },
   "services": {
     "boost": {
       "name": "Boost",

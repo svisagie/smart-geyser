@@ -1,9 +1,10 @@
 //! `AppState` — the data shared between the scheduler and all API handlers.
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
-use tokio::sync::RwLock;
+use tokio::sync::{watch, RwLock};
 
 use smart_geyser_core::models::{EngineConfig, GeyserState};
 use smart_geyser_core::shared_state::SharedState;
@@ -44,6 +45,10 @@ pub struct AppState {
     pub events_tx: tokio::sync::broadcast::Sender<String>,
     /// Most recent broadcast payload — sent immediately to new SSE connections.
     pub last_status_event: Arc<RwLock<Option<String>>>,
+    /// Directory for persistent data files (`provider-config.json`, `pattern_store.json`).
+    pub data_dir: PathBuf,
+    /// Shutdown signal — POST /api/provider-config sends `true` to restart the service.
+    shutdown_tx: Arc<watch::Sender<bool>>,
 }
 
 impl AppState {
@@ -54,8 +59,10 @@ impl AppState {
         setpoint_c: Arc<RwLock<f32>>,
         engine_config: EngineConfig,
         tick_interval_secs: u32,
+        data_dir: PathBuf,
     ) -> Self {
         let (events_tx, _) = tokio::sync::broadcast::channel(32);
+        let (shutdown_tx, _) = watch::channel(false);
         Self {
             shared,
             snapshot: Arc::new(RwLock::new(TickSnapshot::default())),
@@ -65,6 +72,18 @@ impl AppState {
             tick_interval_secs,
             events_tx,
             last_status_event: Arc::new(RwLock::new(None)),
+            data_dir,
+            shutdown_tx: Arc::new(shutdown_tx),
         }
+    }
+
+    /// Subscribe to the shutdown signal; fires when `trigger_shutdown()` is called.
+    pub fn subscribe_shutdown(&self) -> watch::Receiver<bool> {
+        self.shutdown_tx.subscribe()
+    }
+
+    /// Signal the process to restart (write config first, then call this).
+    pub fn trigger_shutdown(&self) {
+        let _ = self.shutdown_tx.send(true);
     }
 }
