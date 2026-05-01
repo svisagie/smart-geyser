@@ -57,23 +57,7 @@ async fn main() -> anyhow::Result<()> {
     let cfg = ServiceConfig::load(&config_path)
         .with_context(|| format!("failed to load config from {}", config_path.display()))?;
 
-    info!(
-        "=== Smart Geyser Controller v{} ===",
-        env!("CARGO_PKG_VERSION")
-    );
-    info!(path = %config_path.display(), "config loaded");
-    info!(addr = %cfg.listen_addr, tick_secs = cfg.tick_interval_secs, data_dir = %cfg.data_dir.display(), "service");
-    info!(
-        setpoint_c = cfg.engine.setpoint_c,
-        hysteresis_c = cfg.engine.hysteresis_c,
-        preheat_threshold = cfg.engine.preheat_threshold,
-        late_use_threshold = cfg.engine.late_use_threshold,
-        cutoff_buffer_min = cfg.engine.cutoff_buffer_min,
-        safety_margin_min = cfg.engine.safety_margin_min,
-        legionella_interval_days = cfg.engine.legionella_interval_days,
-        decay_factor = cfg.engine.decay_factor,
-        "engine config"
-    );
+    log_startup_config(&cfg, &config_path);
 
     // Build geyser provider.
     let geyser: Box<dyn GeyserProvider> = match cfg.geyser {
@@ -169,6 +153,31 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     Ok(())
+}
+
+fn log_startup_config(cfg: &ServiceConfig, config_path: &std::path::Path) {
+    info!(
+        "=== Smart Geyser Controller v{} ===",
+        env!("CARGO_PKG_VERSION")
+    );
+    info!(path = %config_path.display(), "config loaded");
+    info!(
+        addr = %cfg.listen_addr,
+        tick_secs = cfg.tick_interval_secs,
+        data_dir = %cfg.data_dir.display(),
+        "service"
+    );
+    info!(
+        setpoint_c = cfg.engine.setpoint_c,
+        hysteresis_c = cfg.engine.hysteresis_c,
+        preheat_threshold = cfg.engine.preheat_threshold,
+        late_use_threshold = cfg.engine.late_use_threshold,
+        cutoff_buffer_min = cfg.engine.cutoff_buffer_min,
+        safety_margin_min = cfg.engine.safety_margin_min,
+        legionella_interval_days = cfg.engine.legionella_interval_days,
+        decay_factor = cfg.engine.decay_factor,
+        "engine config"
+    );
 }
 
 async fn shutdown_signal() {
