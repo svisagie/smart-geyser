@@ -1,7 +1,7 @@
 {
   "domain": "smart_geyser",
   "name": "Smart Geyser Controller",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "codeowners": ["@svisagie"],
   "config_flow": true,
   "documentation": "https://github.com/svisagie/smart-geyser",

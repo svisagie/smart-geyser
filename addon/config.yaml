@@ -1,5 +1,5 @@
 name: Smart Geyser Controller
-version: "1.0.7"
+version: "1.0.8"
 slug: smart_geyser
 hostname: smart-geyser
 description: Pattern-learning hot-water geyser controller with optional PV opportunity heating.
@@ -18,28 +18,8 @@ ports_description:
 
 options:
   listen_addr: "0.0.0.0:8080"
-  tick_interval_secs: 60
   data_dir: /data
-  engine:
-    setpoint_c: 60.0
-    hysteresis_c: 4.0
-    preheat_threshold: 0.40
-    late_use_threshold: 0.15
-    cutoff_buffer_min: 30
-    safety_margin_min: 20
-    decay_factor: 0.995
-    legionella_interval_days: 7
 
 schema:
   listen_addr: str
-  tick_interval_secs: int(1,3600)
   data_dir: str
-  engine:
-    setpoint_c: float(40,75)
-    hysteresis_c: float(0,20)
-    preheat_threshold: float(0,1)
-    late_use_threshold: float(0,1)
-    cutoff_buffer_min: int(0,120)
-    safety_margin_min: int(0,60)
-    decay_factor: float(0.9,1.0)
-    legionella_interval_days: int(1,30)

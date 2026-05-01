@@ -3,7 +3,7 @@ mod app_state;
 mod config;
 mod scheduler;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -22,7 +22,7 @@ use smart_geyser_providers::geyserwala::GeyserwalaProvider;
 use smart_geyser_providers::geyserwala_mqtt::GeyserwalaMqttProvider;
 
 use app_state::{AppState, ProviderMeta};
-use config::{GeyserProviderConfig, ProviderConfigOverlay, ServiceConfig};
+use config::{GeyserProviderConfig, ServiceConfig, ServiceOverlay};
 use scheduler::Scheduler;
 
 fn parse_config_path() -> Option<PathBuf> {
@@ -56,29 +56,29 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let config_path = parse_config_path().unwrap_or_else(|| PathBuf::from("config.toml"));
-    let mut cfg = ServiceConfig::load(&config_path)
+    let cfg = ServiceConfig::load(&config_path)
         .with_context(|| format!("failed to load config from {}", config_path.display()))?;
 
-    apply_provider_overlay(&mut cfg);
-    log_startup_config(&cfg, &config_path);
+    let overlay = load_overlay(&cfg.data_dir);
+    log_startup(&cfg, &config_path, &overlay);
 
     let tick_notify = Arc::new(Notify::new());
     let shared = SharedState::new();
 
-    let (app_state, maybe_scheduler) = if let Some(geyser_config) = cfg.geyser.take() {
+    let (app_state, maybe_scheduler) = if let Some(geyser_config) = overlay.geyser.clone() {
         let (state, sched) =
-            setup_configured(&cfg, geyser_config, shared, Arc::clone(&tick_notify)).await?;
+            setup_configured(&cfg.data_dir, &overlay, geyser_config, shared, Arc::clone(&tick_notify)).await?;
         (state, Some(sched))
     } else {
         warn!("no provider configured — running in unconfigured mode");
         warn!("use the HA options flow or POST /api/provider-config to configure a provider");
-        let sp = Arc::new(RwLock::new(cfg.engine.setpoint_c));
+        let sp = Arc::new(RwLock::new(overlay.engine.setpoint_c));
         let mut state = AppState::new(
             shared,
             ProviderMeta { geyser_name: "unconfigured", system: HeatingSystem::ElectricOnly },
             sp,
-            cfg.engine.clone(),
-            cfg.tick_interval_secs,
+            overlay.engine.to_engine_config(HeatingSystem::ElectricOnly),
+            overlay.engine.tick_interval_secs,
             cfg.data_dir.clone(),
             tick_notify,
         );
@@ -87,7 +87,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     if let Some(scheduler) = maybe_scheduler {
-        let interval = Duration::from_secs(u64::from(cfg.tick_interval_secs));
+        let interval = Duration::from_secs(u64::from(overlay.engine.tick_interval_secs));
         tokio::spawn(async move { scheduler.run(interval).await; });
     }
 
@@ -104,7 +104,7 @@ async fn main() -> anyhow::Result<()> {
             tokio::select! {
                 () = shutdown_signal() => {}
                 _ = shutdown_rx.changed() => {
-                    info!("provider config updated — shutting down for restart");
+                    info!("config updated — shutting down for restart");
                 }
             }
         })
@@ -114,17 +114,17 @@ async fn main() -> anyhow::Result<()> {
 }
 
 async fn setup_configured(
-    cfg: &ServiceConfig,
+    data_dir: &Path,
+    overlay: &ServiceOverlay,
     geyser_config: GeyserProviderConfig,
     shared: SharedState,
     tick_notify: Arc<Notify>,
 ) -> anyhow::Result<(AppState, Scheduler)> {
     let geyser = build_provider(geyser_config, Arc::clone(&tick_notify)).await?;
-    let mut engine_config = cfg.engine.clone();
-    engine_config.system = geyser.system();
+    let engine_config = overlay.engine.to_engine_config(geyser.system());
     let initial_setpoint = read_initial_setpoint(geyser.as_ref(), &engine_config).await;
     let meta = ProviderMeta { geyser_name: geyser.name(), system: geyser.system() };
-    let pattern_store = load_pattern_store(&cfg.data_dir, engine_config.decay_factor);
+    let pattern_store = load_pattern_store(data_dir, engine_config.decay_factor);
     let engine = DecisionEngine::new(engine_config.clone(), pattern_store, shared.clone());
     let detector = EventDetector::new(EventDetectorConfig::default());
     let setpoint_arc = Arc::new(RwLock::new(initial_setpoint));
@@ -133,8 +133,8 @@ async fn setup_configured(
         meta,
         Arc::clone(&setpoint_arc),
         engine_config,
-        cfg.tick_interval_secs,
-        cfg.data_dir.clone(),
+        overlay.engine.tick_interval_secs,
+        data_dir.to_path_buf(),
         tick_notify,
     );
     let scheduler = Scheduler {
@@ -142,7 +142,7 @@ async fn setup_configured(
         engine,
         detector,
         app_state: app_state.clone(),
-        data_dir: cfg.data_dir.clone(),
+        data_dir: data_dir.to_path_buf(),
         setpoint_c: setpoint_arc,
     };
     Ok((app_state, scheduler))
@@ -166,11 +166,7 @@ async fn read_initial_setpoint(geyser: &dyn GeyserProvider, cfg: &EngineConfig) 
     }
     match geyser.get_setpoint().await {
         Ok(Some(sp)) => {
-            info!(
-                device_setpoint_c = sp,
-                config_setpoint_c = cfg.setpoint_c,
-                "device setpoint overrides config"
-            );
+            info!(device_setpoint_c = sp, config_setpoint_c = cfg.setpoint_c, "device setpoint overrides config");
             sp
         }
         Ok(None) => cfg.setpoint_c,
@@ -181,7 +177,7 @@ async fn read_initial_setpoint(geyser: &dyn GeyserProvider, cfg: &EngineConfig) 
     }
 }
 
-fn load_pattern_store(data_dir: &std::path::Path, decay_factor: f32) -> PatternStore {
+fn load_pattern_store(data_dir: &Path, decay_factor: f32) -> PatternStore {
     let path = data_dir.join("pattern_store.json");
     if !data_dir.as_os_str().is_empty() && path.exists() {
         PatternStore::load_from_path(&path).unwrap_or_else(|_| PatternStore::new(decay_factor))
@@ -190,41 +186,34 @@ fn load_pattern_store(data_dir: &std::path::Path, decay_factor: f32) -> PatternS
     }
 }
 
-fn apply_provider_overlay(cfg: &mut ServiceConfig) {
-    let overlay_path = cfg.data_dir.join("provider-config.json");
-    if !overlay_path.exists() {
-        return;
-    }
-    match ProviderConfigOverlay::load(&overlay_path) {
-        Ok(overlay) => {
-            info!("loaded provider config from {}", overlay_path.display());
-            cfg.geyser = Some(overlay.geyser);
+pub fn load_overlay(data_dir: &Path) -> ServiceOverlay {
+    let path = data_dir.join("provider-config.json");
+    if !data_dir.as_os_str().is_empty() && path.exists() {
+        match ServiceOverlay::load(&path) {
+            Ok(overlay) => {
+                info!("loaded service overlay from {}", path.display());
+                return overlay;
+            }
+            Err(e) => warn!("ignoring invalid service overlay: {e:#}"),
         }
-        Err(e) => warn!("ignoring invalid provider-config.json: {e:#}"),
     }
+    ServiceOverlay::default()
 }
 
-fn log_startup_config(cfg: &ServiceConfig, config_path: &std::path::Path) {
-    info!(
-        "=== Smart Geyser Controller v{} ===",
-        env!("CARGO_PKG_VERSION")
-    );
+fn log_startup(cfg: &ServiceConfig, config_path: &Path, overlay: &ServiceOverlay) {
+    info!("=== Smart Geyser Controller v{} ===", env!("CARGO_PKG_VERSION"));
     info!(path = %config_path.display(), "config loaded");
+    info!(addr = %cfg.listen_addr, data_dir = %cfg.data_dir.display(), "service");
     info!(
-        addr = %cfg.listen_addr,
-        tick_secs = cfg.tick_interval_secs,
-        data_dir = %cfg.data_dir.display(),
-        "service"
-    );
-    info!(
-        setpoint_c = cfg.engine.setpoint_c,
-        hysteresis_c = cfg.engine.hysteresis_c,
-        preheat_threshold = cfg.engine.preheat_threshold,
-        late_use_threshold = cfg.engine.late_use_threshold,
-        cutoff_buffer_min = cfg.engine.cutoff_buffer_min,
-        safety_margin_min = cfg.engine.safety_margin_min,
-        legionella_interval_days = cfg.engine.legionella_interval_days,
-        decay_factor = cfg.engine.decay_factor,
+        tick_secs = overlay.engine.tick_interval_secs,
+        setpoint_c = overlay.engine.setpoint_c,
+        hysteresis_c = overlay.engine.hysteresis_c,
+        preheat_threshold = overlay.engine.preheat_threshold,
+        late_use_threshold = overlay.engine.late_use_threshold,
+        cutoff_buffer_min = overlay.engine.cutoff_buffer_min,
+        safety_margin_min = overlay.engine.safety_margin_min,
+        legionella_interval_days = overlay.engine.legionella_interval_days,
+        decay_factor = overlay.engine.decay_factor,
         "engine config"
     );
 }
@@ -241,8 +230,6 @@ async fn shutdown_signal() {
     }
     #[cfg(not(unix))]
     {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to listen for ctrl-c");
+        tokio::signal::ctrl_c().await.expect("failed to listen for ctrl-c");
     }
 }

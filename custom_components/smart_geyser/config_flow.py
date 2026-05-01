@@ -56,12 +56,13 @@ class SmartGeyserConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class SmartGeyserOptionsFlow(OptionsFlow):
-    """Allow the user to reconfigure the geyser provider through the HA UI."""
+    """Multi-step options flow — configure provider hardware or engine settings."""
 
     def __init__(self, config_entry: ConfigEntry) -> None:
         self._entry = config_entry
         self._provider_type: str = "geyserwala"
-        self._current: dict = {}
+        self._current_provider: dict = {}
+        self._current_engine: dict = {}
 
     def _client(self) -> SmartGeyserClient:
         session = async_get_clientsession(self.hass)
@@ -71,15 +72,44 @@ class SmartGeyserOptionsFlow(OptionsFlow):
             self._entry.data.get(CONF_PORT, DEFAULT_PORT),
         )
 
+    # ------------------------------------------------------------------
+    # Step 1: menu — what would you like to configure?
+    # ------------------------------------------------------------------
+
     async def async_step_init(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Step 1 — choose provider type."""
-        if not self._current:
+        """Choose whether to configure provider settings or engine settings."""
+        if user_input is not None:
+            section = user_input["section"]
+            if section == "engine":
+                return await self.async_step_engine_config()
+            return await self.async_step_provider_type()
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("section", default="provider"): vol.In(
+                        ["provider", "engine"]
+                    ),
+                }
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # Step 2a: choose provider type
+    # ------------------------------------------------------------------
+
+    async def async_step_provider_type(
+        self, user_input: dict | None = None
+    ) -> ConfigFlowResult:
+        """Choose between REST and MQTT provider."""
+        if not self._current_provider:
             try:
-                self._current = await self._client().get_provider_config()
+                self._current_provider = await self._client().get_provider_config()
             except Exception:  # noqa: BLE001
-                self._current = {}
+                self._current_provider = {}
 
         if user_input is not None:
             self._provider_type = user_input["provider_type"]
@@ -87,9 +117,9 @@ class SmartGeyserOptionsFlow(OptionsFlow):
                 return await self.async_step_mqtt_config()
             return await self.async_step_rest_config()
 
-        current_type = self._current.get("type", "geyserwala")
+        current_type = self._current_provider.get("type", "geyserwala")
         return self.async_show_form(
-            step_id="init",
+            step_id="provider_type",
             data_schema=vol.Schema(
                 {
                     vol.Required("provider_type", default=current_type): vol.In(
@@ -99,12 +129,16 @@ class SmartGeyserOptionsFlow(OptionsFlow):
             ),
         )
 
+    # ------------------------------------------------------------------
+    # Step 2b: REST provider settings
+    # ------------------------------------------------------------------
+
     async def async_step_rest_config(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Step 2a — Geyserwala REST connection settings."""
+        """Geyserwala REST connection settings."""
         errors: dict[str, str] = {}
-        c = self._current
+        c = self._current_provider
 
         if user_input is not None:
             try:
@@ -141,12 +175,16 @@ class SmartGeyserOptionsFlow(OptionsFlow):
             errors=errors,
         )
 
+    # ------------------------------------------------------------------
+    # Step 2b (alt): MQTT provider settings
+    # ------------------------------------------------------------------
+
     async def async_step_mqtt_config(
         self, user_input: dict | None = None
     ) -> ConfigFlowResult:
-        """Step 2b — Geyserwala MQTT connection settings."""
+        """Geyserwala MQTT connection settings."""
         errors: dict[str, str] = {}
-        c = self._current
+        c = self._current_provider
 
         if user_input is not None:
             try:
@@ -189,6 +227,82 @@ class SmartGeyserOptionsFlow(OptionsFlow):
                     vol.Required(
                         "tank_volume_l", default=c.get("tank_volume_l", 150.0)
                     ): vol.All(vol.Coerce(float), vol.Range(min=50, max=500)),
+                }
+            ),
+            errors=errors,
+        )
+
+    # ------------------------------------------------------------------
+    # Step 2c: engine / scheduler settings
+    # ------------------------------------------------------------------
+
+    async def async_step_engine_config(
+        self, user_input: dict | None = None
+    ) -> ConfigFlowResult:
+        """Engine and scheduler settings."""
+        errors: dict[str, str] = {}
+
+        if not self._current_engine:
+            try:
+                self._current_engine = await self._client().get_engine_config()
+            except Exception:  # noqa: BLE001
+                self._current_engine = {}
+
+        e = self._current_engine
+
+        if user_input is not None:
+            try:
+                await self._client().set_engine_config(
+                    {
+                        "setpoint_c": float(user_input["setpoint_c"]),
+                        "hysteresis_c": float(user_input["hysteresis_c"]),
+                        "preheat_threshold": float(user_input["preheat_threshold"]),
+                        "late_use_threshold": float(user_input["late_use_threshold"]),
+                        "cutoff_buffer_min": int(user_input["cutoff_buffer_min"]),
+                        "safety_margin_min": int(user_input["safety_margin_min"]),
+                        "decay_factor": float(user_input["decay_factor"]),
+                        "legionella_interval_days": int(user_input["legionella_interval_days"]),
+                        "tick_interval_secs": int(user_input["tick_interval_secs"]),
+                    }
+                )
+                return self.async_create_entry(title="", data={})
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except Exception:  # noqa: BLE001
+                errors["base"] = "save_failed"
+
+        return self.async_show_form(
+            step_id="engine_config",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "setpoint_c", default=e.get("setpoint_c", 60.0)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=40, max=75)),
+                    vol.Required(
+                        "hysteresis_c", default=e.get("hysteresis_c", 4.0)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=20)),
+                    vol.Required(
+                        "preheat_threshold", default=e.get("preheat_threshold", 0.4)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=1)),
+                    vol.Required(
+                        "late_use_threshold", default=e.get("late_use_threshold", 0.15)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0, max=1)),
+                    vol.Required(
+                        "cutoff_buffer_min", default=e.get("cutoff_buffer_min", 30)
+                    ): vol.All(vol.Coerce(int), vol.Range(min=0, max=120)),
+                    vol.Required(
+                        "safety_margin_min", default=e.get("safety_margin_min", 20)
+                    ): vol.All(vol.Coerce(int), vol.Range(min=0, max=60)),
+                    vol.Required(
+                        "decay_factor", default=e.get("decay_factor", 0.995)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.9, max=1.0)),
+                    vol.Required(
+                        "legionella_interval_days",
+                        default=e.get("legionella_interval_days", 7),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=30)),
+                    vol.Required(
+                        "tick_interval_secs", default=e.get("tick_interval_secs", 60)
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=3600)),
                 }
             ),
             errors=errors,

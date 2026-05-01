@@ -22,8 +22,15 @@
   "options": {
     "step": {
       "init": {
+        "title": "What would you like to configure?",
+        "description": "Choose a section to update. The add-on will restart to apply the new settings.",
+        "data": {
+          "section": "Section"
+        }
+      },
+      "provider_type": {
         "title": "Provider type",
-        "description": "Select how the add-on connects to your geyser hardware. The add-on will restart to apply the new settings.",
+        "description": "Select how the add-on connects to your geyser hardware.",
         "data": {
           "provider_type": "Connection type"
         }
@@ -48,6 +55,21 @@
           "password": "Password (leave blank if none)",
           "element_kw": "Element power (kW)",
           "tank_volume_l": "Tank volume (L)"
+        }
+      },
+      "engine_config": {
+        "title": "Engine & Scheduler Settings",
+        "description": "Tune the pattern-learning scheduler. The add-on will restart to apply changes.",
+        "data": {
+          "setpoint_c": "Target temperature (°C)",
+          "hysteresis_c": "Hysteresis (°C)",
+          "preheat_threshold": "Pre-heat probability threshold (0–1)",
+          "late_use_threshold": "Late-use probability threshold (0–1)",
+          "cutoff_buffer_min": "Stop-heating buffer before use (minutes)",
+          "safety_margin_min": "Safety margin for lead-time (minutes)",
+          "decay_factor": "Pattern decay factor (0.9–1.0)",
+          "legionella_interval_days": "Legionella cycle interval (days)",
+          "tick_interval_secs": "Polling / fallback tick interval (seconds)"
         }
       }
     },

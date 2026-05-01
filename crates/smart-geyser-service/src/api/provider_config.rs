@@ -1,8 +1,9 @@
 //! GET + POST `/api/provider-config` — read and update the geyser provider settings.
 //!
-//! POST persists the new config to `<data_dir>/provider-config.json` and then
-//! signals axum to shut down gracefully. The HA Supervisor restarts the add-on
-//! automatically, picking up the new provider on the next start.
+//! POST persists the new config to `<data_dir>/provider-config.json` (the
+//! service overlay file) and then signals axum to shut down gracefully.
+//! The HA Supervisor restarts the add-on, picking up the new provider on
+//! the next start.  The engine settings section is preserved when writing.
 
 use axum::{extract::State, http::StatusCode, Json};
 use serde::Deserialize;
@@ -10,7 +11,7 @@ use serde_json::{json, Value};
 use tracing::{info, warn};
 
 use crate::app_state::AppState;
-use crate::config::{GeyserProviderConfig, ProviderConfigOverlay};
+use crate::config::{GeyserProviderConfig, ServiceOverlay};
 
 #[derive(Deserialize)]
 pub struct SetProviderConfigBody {
@@ -20,10 +21,12 @@ pub struct SetProviderConfigBody {
 pub async fn get_provider_config(State(state): State<AppState>) -> Json<Value> {
     let path = state.data_dir.join("provider-config.json");
     if path.exists() {
-        match ProviderConfigOverlay::load(&path) {
+        match ServiceOverlay::load(&path) {
             Ok(overlay) => {
-                if let Ok(geyser_val) = serde_json::to_value(&overlay.geyser) {
-                    return Json(json!({"configured": true, "geyser": geyser_val}));
+                if let Some(ref geyser) = overlay.geyser {
+                    if let Ok(geyser_val) = serde_json::to_value(geyser) {
+                        return Json(json!({"configured": true, "geyser": geyser_val}));
+                    }
                 }
             }
             Err(e) => warn!("failed to read provider-config.json: {e:#}"),
@@ -43,9 +46,13 @@ pub async fn post_provider_config(
         );
     }
     let path = state.data_dir.join("provider-config.json");
-    let overlay = ProviderConfigOverlay {
-        geyser: body.geyser,
+    // Load existing overlay so we preserve engine settings.
+    let mut overlay = if path.exists() {
+        ServiceOverlay::load(&path).unwrap_or_default()
+    } else {
+        ServiceOverlay::default()
     };
+    overlay.geyser = Some(body.geyser);
     if let Err(e) = overlay.save(&path) {
         warn!("failed to write provider-config.json: {e:#}");
         return (
@@ -55,8 +62,5 @@ pub async fn post_provider_config(
     }
     info!("provider config saved — signalling graceful restart");
     state.trigger_shutdown();
-    (
-        StatusCode::OK,
-        Json(json!({"ok": true, "restart_required": true})),
-    )
+    (StatusCode::OK, Json(json!({"ok": true, "restart_required": true})))
 }

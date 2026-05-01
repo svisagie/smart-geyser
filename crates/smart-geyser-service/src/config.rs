@@ -1,5 +1,5 @@
-//! Service configuration — loaded from TOML, individual fields overridable
-//! via `SMART_GEYSER_*` environment variables.
+//! Service configuration — bootstrap params loaded from options.json/TOML,
+//! everything else managed via the REST API and persisted in the overlay file.
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -7,23 +7,120 @@ use std::path::PathBuf;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
-use smart_geyser_core::models::EngineConfig;
+use smart_geyser_core::models::{EngineConfig, OpportunityConfig, SolarWindow};
+use smart_geyser_core::system::HeatingSystem;
 use smart_geyser_providers::geyserwala::GeyserwalaConfig;
 use smart_geyser_providers::geyserwala_mqtt::GeyserwalaMqttConfig;
 
 // ---------------------------------------------------------------------------
-// Provider-only config overlay (written by POST /api/provider-config)
+// Engine settings (stored in the overlay, separate from core EngineConfig so
+// we don't serialise internal fields like `system` or v2 opportunity settings)
 // ---------------------------------------------------------------------------
 
-/// Subset of config persisted to `/data/provider-config.json` by the options
-/// flow. Loaded at startup and overlaid on top of `options.json` so the HA
-/// integration UI is the single source of truth for provider settings.
+/// User-configurable engine parameters.  Defaults match spec §9.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProviderConfigOverlay {
-    pub geyser: GeyserProviderConfig,
+pub struct EngineSettings {
+    #[serde(default = "default_setpoint_c")]
+    pub setpoint_c: f32,
+    #[serde(default = "default_hysteresis_c")]
+    pub hysteresis_c: f32,
+    #[serde(default = "default_preheat_threshold")]
+    pub preheat_threshold: f32,
+    #[serde(default = "default_late_use_threshold")]
+    pub late_use_threshold: f32,
+    #[serde(default = "default_cutoff_buffer_min")]
+    pub cutoff_buffer_min: u32,
+    #[serde(default = "default_safety_margin_min")]
+    pub safety_margin_min: u32,
+    #[serde(default = "default_decay_factor")]
+    pub decay_factor: f32,
+    #[serde(default = "default_legionella_interval_days")]
+    pub legionella_interval_days: u32,
+    #[serde(default = "default_tick_interval")]
+    pub tick_interval_secs: u32,
 }
 
-impl ProviderConfigOverlay {
+impl Default for EngineSettings {
+    fn default() -> Self {
+        Self {
+            setpoint_c: default_setpoint_c(),
+            hysteresis_c: default_hysteresis_c(),
+            preheat_threshold: default_preheat_threshold(),
+            late_use_threshold: default_late_use_threshold(),
+            cutoff_buffer_min: default_cutoff_buffer_min(),
+            safety_margin_min: default_safety_margin_min(),
+            decay_factor: default_decay_factor(),
+            legionella_interval_days: default_legionella_interval_days(),
+            tick_interval_secs: default_tick_interval(),
+        }
+    }
+}
+
+impl EngineSettings {
+    /// Build a full `EngineConfig` by combining stored settings with the
+    /// runtime system type (derived from the provider) and v2 defaults.
+    pub fn to_engine_config(&self, system: HeatingSystem) -> EngineConfig {
+        EngineConfig {
+            system,
+            setpoint_c: self.setpoint_c,
+            hysteresis_c: self.hysteresis_c,
+            preheat_threshold: self.preheat_threshold,
+            late_use_threshold: self.late_use_threshold,
+            cutoff_buffer_min: self.cutoff_buffer_min,
+            safety_margin_min: self.safety_margin_min,
+            decay_factor: self.decay_factor,
+            legionella_interval_days: self.legionella_interval_days,
+            opportunity: None::<OpportunityConfig>,
+            solar_window: None::<SolarWindow>,
+        }
+    }
+
+    /// Build `EngineSettings` from a runtime `EngineConfig` (strips `system`
+    /// and v2 fields — used when reading live config back for the overlay).
+    pub fn from_engine_config(cfg: &EngineConfig, tick_interval_secs: u32) -> Self {
+        Self {
+            setpoint_c: cfg.setpoint_c,
+            hysteresis_c: cfg.hysteresis_c,
+            preheat_threshold: cfg.preheat_threshold,
+            late_use_threshold: cfg.late_use_threshold,
+            cutoff_buffer_min: cfg.cutoff_buffer_min,
+            safety_margin_min: cfg.safety_margin_min,
+            decay_factor: cfg.decay_factor,
+            legionella_interval_days: cfg.legionella_interval_days,
+            tick_interval_secs,
+        }
+    }
+}
+
+fn default_setpoint_c() -> f32 { 60.0 }
+fn default_hysteresis_c() -> f32 { 4.0 }
+fn default_preheat_threshold() -> f32 { 0.40 }
+fn default_late_use_threshold() -> f32 { 0.15 }
+fn default_cutoff_buffer_min() -> u32 { 30 }
+fn default_safety_margin_min() -> u32 { 20 }
+fn default_decay_factor() -> f32 { 0.995 }
+fn default_legionella_interval_days() -> u32 { 7 }
+fn default_tick_interval() -> u32 { 60 }
+
+// ---------------------------------------------------------------------------
+// Service overlay — the single file that the API writes to persist all
+// user-supplied settings that are not bootstrap parameters.
+// ---------------------------------------------------------------------------
+
+/// Persistent settings managed exclusively via the REST API.
+/// Written to `<data_dir>/provider-config.json` by the options flow endpoints.
+/// Both `POST /api/provider-config` and `POST /api/engine-config` read, update
+/// their own section, and save — preserving the other section.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ServiceOverlay {
+    /// Provider hardware config; `None` until first configuration.
+    pub geyser: Option<GeyserProviderConfig>,
+    /// Engine / scheduler settings; uses spec defaults when absent.
+    #[serde(default)]
+    pub engine: EngineSettings,
+}
+
+impl ServiceOverlay {
     /// Load from JSON file.
     ///
     /// # Errors
@@ -33,7 +130,7 @@ impl ProviderConfigOverlay {
         let raw = std::fs::read_to_string(path)
             .with_context(|| format!("cannot read {}", path.display()))?;
         serde_json::from_str(&raw)
-            .with_context(|| format!("invalid provider config in {}", path.display()))
+            .with_context(|| format!("invalid service overlay in {}", path.display()))
     }
 
     /// Persist to JSON file (pretty-printed for human readability).
@@ -48,33 +145,52 @@ impl ProviderConfigOverlay {
 }
 
 // ---------------------------------------------------------------------------
-// Top-level
+// Bootstrap-only config (listen address + data directory)
 // ---------------------------------------------------------------------------
 
+/// Minimal bootstrap configuration loaded from `options.json` or `config.toml`.
+/// Everything else is managed via the REST API (stored in `ServiceOverlay`).
+///
+/// Overridable via environment variables:
+/// - `SMART_GEYSER_LISTEN_ADDR`
+/// - `SMART_GEYSER_DATA_DIR`
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ServiceConfig {
     #[serde(default = "default_listen_addr")]
     pub listen_addr: SocketAddr,
 
-    #[serde(default = "default_tick_interval")]
-    pub tick_interval_secs: u32,
-
     #[serde(default)]
     pub data_dir: PathBuf,
-
-    #[serde(default)]
-    pub geyser: Option<GeyserProviderConfig>,
-
-    #[serde(default)]
-    pub engine: EngineConfig,
 }
 
 fn default_listen_addr() -> SocketAddr {
     "0.0.0.0:8080".parse().unwrap()
 }
 
-fn default_tick_interval() -> u32 {
-    60
+impl ServiceConfig {
+    /// Load from a TOML or JSON file (detected by extension).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be read or the content is invalid.
+    pub fn load(path: &std::path::Path) -> anyhow::Result<Self> {
+        let raw = std::fs::read_to_string(path)
+            .with_context(|| format!("cannot read config file {}", path.display()))?;
+        let mut cfg: Self = if path.extension().and_then(|e| e.to_str()) == Some("json") {
+            serde_json::from_str(&raw).context("invalid config JSON")?
+        } else {
+            toml::from_str(&raw).context("invalid config TOML")?
+        };
+        if let Ok(v) = std::env::var("SMART_GEYSER_LISTEN_ADDR") {
+            cfg.listen_addr = v
+                .parse()
+                .context("SMART_GEYSER_LISTEN_ADDR is not a valid SocketAddr")?;
+        }
+        if let Ok(v) = std::env::var("SMART_GEYSER_DATA_DIR") {
+            cfg.data_dir = PathBuf::from(v);
+        }
+        Ok(cfg)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -89,8 +205,6 @@ pub enum GeyserProviderConfig {
     GeyserwalaaMqtt(GeyserwalaaMqttTomlConfig),
 }
 
-/// TOML-friendly wrapper around `GeyserwalaConfig` (all fields optional
-/// except `base_url`; defaults match `GeyserwalaConfig::default()`).
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GeyserwalaTomlConfig {
     pub base_url: String,
@@ -103,17 +217,10 @@ pub struct GeyserwalaTomlConfig {
     pub timeout_secs: u64,
 }
 
-fn default_element_kw() -> f32 {
-    3.0
-}
-fn default_tank_volume_l() -> f32 {
-    150.0
-}
-fn default_timeout_secs() -> u64 {
-    10
-}
+fn default_element_kw() -> f32 { 3.0 }
+fn default_tank_volume_l() -> f32 { 150.0 }
+fn default_timeout_secs() -> u64 { 10 }
 
-/// TOML config for the Geyserwala MQTT provider.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GeyserwalaaMqttTomlConfig {
     pub broker_host: String,
@@ -130,12 +237,8 @@ pub struct GeyserwalaaMqttTomlConfig {
     pub tank_volume_l: f32,
 }
 
-fn default_mqtt_port() -> u16 {
-    1883
-}
-fn default_topic_prefix() -> String {
-    "geyserwala".to_string()
-}
+fn default_mqtt_port() -> u16 { 1883 }
+fn default_topic_prefix() -> String { "geyserwala".to_string() }
 
 impl From<GeyserwalaaMqttTomlConfig> for GeyserwalaMqttConfig {
     fn from(c: GeyserwalaaMqttTomlConfig) -> Self {
@@ -165,53 +268,6 @@ impl From<GeyserwalaTomlConfig> for GeyserwalaConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Loading
-// ---------------------------------------------------------------------------
-
-impl ServiceConfig {
-    /// Load from a TOML or JSON file (detected by extension).
-    ///
-    /// JSON is used when the HA add-on framework writes `/data/options.json`.
-    /// TOML is used for manual/dev deployments (`config.toml`).
-    ///
-    /// A handful of top-level fields can be overridden by environment variables
-    /// (prefix `SMART_GEYSER_`):
-    /// - `SMART_GEYSER_LISTEN_ADDR`
-    /// - `SMART_GEYSER_TICK_INTERVAL_SECS`
-    /// - `SMART_GEYSER_DATA_DIR`
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the file cannot be read or the content is invalid.
-    pub fn load(path: &std::path::Path) -> anyhow::Result<Self> {
-        let raw = std::fs::read_to_string(path)
-            .with_context(|| format!("cannot read config file {}", path.display()))?;
-        let mut cfg: Self = if path.extension().and_then(|e| e.to_str()) == Some("json") {
-            serde_json::from_str(&raw).context("invalid config JSON")?
-        } else {
-            toml::from_str(&raw).context("invalid config TOML")?
-        };
-
-        // Environment overrides.
-        if let Ok(v) = std::env::var("SMART_GEYSER_LISTEN_ADDR") {
-            cfg.listen_addr = v
-                .parse()
-                .context("SMART_GEYSER_LISTEN_ADDR is not a valid SocketAddr")?;
-        }
-        if let Ok(v) = std::env::var("SMART_GEYSER_TICK_INTERVAL_SECS") {
-            cfg.tick_interval_secs = v
-                .parse()
-                .context("SMART_GEYSER_TICK_INTERVAL_SECS must be an integer")?;
-        }
-        if let Ok(v) = std::env::var("SMART_GEYSER_DATA_DIR") {
-            cfg.data_dir = PathBuf::from(v);
-        }
-
-        Ok(cfg)
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -219,91 +275,62 @@ impl ServiceConfig {
 mod tests {
     use super::*;
 
-    const MINIMAL_TOML: &str = r#"
-[geyser]
-type = "geyserwala"
-base_url = "http://192.168.1.50"
-"#;
-
     #[test]
-    fn minimal_toml_parses() {
-        let cfg: ServiceConfig = toml::from_str(MINIMAL_TOML).unwrap();
-        match cfg.geyser.as_ref().unwrap() {
-            GeyserProviderConfig::Geyserwala(g) => {
-                assert_eq!(g.base_url, "http://192.168.1.50");
-                assert_eq!(g.element_kw, 3.0);
-                assert_eq!(g.tank_volume_l, 150.0);
-            }
-            _ => panic!("expected Geyserwala variant"),
-        }
-        assert_eq!(cfg.tick_interval_secs, 60);
+    fn empty_toml_gives_defaults() {
+        let cfg: ServiceConfig = toml::from_str("").unwrap();
+        assert_eq!(cfg.listen_addr.port(), 8080);
     }
 
     #[test]
-    fn full_toml_parses() {
-        let toml = r#"
-listen_addr = "0.0.0.0:9090"
-tick_interval_secs = 30
-data_dir = "/tmp/geyser"
-
-[geyser]
-type = "geyserwala"
-base_url = "http://10.0.0.5"
-token = "abc123"
-element_kw = 4.0
-tank_volume_l = 200.0
-timeout_secs = 15
-
-[engine]
-setpoint_c = 62.0
-"#;
-        let cfg: ServiceConfig = toml::from_str(toml).unwrap();
-        assert_eq!(cfg.tick_interval_secs, 30);
-        assert_eq!(cfg.engine.setpoint_c, 62.0);
-        match cfg.geyser.as_ref().unwrap() {
-            GeyserProviderConfig::Geyserwala(g) => {
-                assert_eq!(g.token, Some("abc123".to_string()));
-                assert_eq!(g.element_kw, 4.0);
-            }
-            _ => panic!("expected Geyserwala variant"),
-        }
-    }
-
-    #[test]
-    fn missing_geyser_section_is_none() {
-        let cfg: ServiceConfig = toml::from_str("tick_interval_secs = 30").unwrap();
-        assert!(cfg.geyser.is_none());
+    fn listen_addr_override_parses() {
+        let cfg: ServiceConfig = toml::from_str(r#"listen_addr = "0.0.0.0:9090""#).unwrap();
+        assert_eq!(cfg.listen_addr.port(), 9090);
     }
 
     #[test]
     fn json_options_parses() {
-        // Mirrors the structure HA writes to /data/options.json from addon/config.yaml.
-        let json = r#"{
-            "listen_addr": "0.0.0.0:8080",
-            "tick_interval_secs": 60,
-            "data_dir": "/data",
-            "geyser": {
-                "type": "geyserwala",
-                "base_url": "http://192.168.1.50",
-                "token": "",
-                "element_kw": 3.0,
-                "tank_volume_l": 150.0,
-                "timeout_secs": 10
-            },
-            "engine": {
-                "setpoint_c": 60.0,
-                "hysteresis_c": 4.0
-            }
-        }"#;
+        let json = r#"{"listen_addr": "0.0.0.0:8080", "data_dir": "/data"}"#;
         let cfg: ServiceConfig = serde_json::from_str(json).unwrap();
-        assert_eq!(cfg.tick_interval_secs, 60);
-        assert_eq!(cfg.engine.setpoint_c, 60.0);
-        match cfg.geyser.as_ref().unwrap() {
-            GeyserProviderConfig::Geyserwala(g) => {
-                assert_eq!(g.base_url, "http://192.168.1.50");
-                assert_eq!(g.element_kw, 3.0);
-            }
-            _ => panic!("expected Geyserwala variant"),
-        }
+        assert_eq!(cfg.listen_addr.port(), 8080);
+        assert_eq!(cfg.data_dir.as_os_str(), "/data");
+    }
+
+    #[test]
+    fn engine_settings_defaults_match_spec() {
+        let e = EngineSettings::default();
+        assert_eq!(e.setpoint_c, 60.0);
+        assert_eq!(e.hysteresis_c, 4.0);
+        assert!((e.preheat_threshold - 0.40).abs() < f32::EPSILON);
+        assert!((e.late_use_threshold - 0.15).abs() < f32::EPSILON);
+        assert_eq!(e.cutoff_buffer_min, 30);
+        assert_eq!(e.safety_margin_min, 20);
+        assert!((e.decay_factor - 0.995).abs() < f32::EPSILON);
+        assert_eq!(e.legionella_interval_days, 7);
+        assert_eq!(e.tick_interval_secs, 60);
+    }
+
+    #[test]
+    fn service_overlay_empty_json_gives_defaults() {
+        let overlay: ServiceOverlay = serde_json::from_str("{}").unwrap();
+        assert!(overlay.geyser.is_none());
+        assert_eq!(overlay.engine.tick_interval_secs, 60);
+    }
+
+    #[test]
+    fn service_overlay_roundtrip() {
+        let overlay = ServiceOverlay {
+            geyser: Some(GeyserProviderConfig::Geyserwala(GeyserwalaTomlConfig {
+                base_url: "http://192.168.1.50".to_string(),
+                token: None,
+                element_kw: 3.0,
+                tank_volume_l: 150.0,
+                timeout_secs: 10,
+            })),
+            engine: EngineSettings { setpoint_c: 65.0, ..EngineSettings::default() },
+        };
+        let json = serde_json::to_string(&overlay).unwrap();
+        let back: ServiceOverlay = serde_json::from_str(&json).unwrap();
+        assert!(back.geyser.is_some());
+        assert_eq!(back.engine.setpoint_c, 65.0);
     }
 }

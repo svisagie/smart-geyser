@@ -198,6 +198,17 @@ class SmartGeyserClient:
         """Push new provider configuration; the service will restart to apply it."""
         await self._post("/api/provider-config", {"geyser": config})
 
+    async def get_engine_config(self) -> dict[str, Any]:
+        """Return the current engine / scheduler configuration."""
+        try:
+            return await self._get("/api/engine-config")
+        except (CannotConnect, InvalidResponse):
+            return {}
+
+    async def set_engine_config(self, config: dict[str, Any]) -> None:
+        """Push new engine configuration; the service will restart to apply it."""
+        await self._post("/api/engine-config", config)
+
     async def stream_status(self) -> AsyncGenerator[GeyserStatus, None]:
         """Yield GeyserStatus objects from the SSE /api/events endpoint."""
         sse_timeout = aiohttp.ClientTimeout(total=None, connect=10, sock_read=None)
