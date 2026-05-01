@@ -1,5 +1,5 @@
 name: Smart Geyser Controller
-version: "1.0.6"
+version: "1.0.7"
 slug: smart_geyser
 hostname: smart-geyser
 description: Pattern-learning hot-water geyser controller with optional PV opportunity heating.
@@ -20,13 +20,6 @@ options:
   listen_addr: "0.0.0.0:8080"
   tick_interval_secs: 60
   data_dir: /data
-  geyser:
-    type: geyserwala
-    base_url: http://192.168.1.50
-    token: ""
-    element_kw: 3.0
-    tank_volume_l: 150.0
-    timeout_secs: 10
   engine:
     setpoint_c: 60.0
     hysteresis_c: 4.0
@@ -41,13 +34,6 @@ schema:
   listen_addr: str
   tick_interval_secs: int(1,3600)
   data_dir: str
-  geyser:
-    type: str
-    base_url: url
-    token: str?
-    element_kw: float
-    tank_volume_l: float
-    timeout_secs: int(1,300)
   engine:
     setpoint_c: float(40,75)
     hysteresis_c: float(0,20)

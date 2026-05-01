@@ -57,6 +57,7 @@ mod tests {
             EngineConfig::default(),
             60,
             std::path::PathBuf::new(),
+            Arc::new(tokio::sync::Notify::new()),
         );
         TestServer::new(super::super::router().with_state(state))
     }

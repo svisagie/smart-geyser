@@ -251,7 +251,13 @@ impl Scheduler {
             }
             self.broadcast_status(sp).await;
 
-            tokio::time::sleep(tick_interval).await;
+            // Wait for either the interval or an event-driven wake (MQTT message, API call).
+            tokio::select! {
+                () = tokio::time::sleep(tick_interval) => {}
+                () = self.app_state.tick_notify.notified() => {
+                    debug!("tick triggered by event");
+                }
+            }
         }
     }
 }

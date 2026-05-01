@@ -32,6 +32,7 @@ mod tests {
             smart_geyser_core::models::EngineConfig::default(),
             60,
             std::path::PathBuf::new(),
+            Arc::new(tokio::sync::Notify::new()),
         );
         TestServer::new(super::super::router().with_state(state))
     }

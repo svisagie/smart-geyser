@@ -8,14 +8,16 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Context;
-use tokio::sync::RwLock;
+use tokio::sync::{Notify, RwLock};
 use tracing::{info, warn};
 
 use smart_geyser_core::decision_engine::DecisionEngine;
 use smart_geyser_core::event_detector::{EventDetector, EventDetectorConfig};
+use smart_geyser_core::models::EngineConfig;
 use smart_geyser_core::pattern_store::PatternStore;
 use smart_geyser_core::provider::{GeyserCapability, GeyserProvider};
 use smart_geyser_core::shared_state::SharedState;
+use smart_geyser_core::system::HeatingSystem;
 use smart_geyser_providers::geyserwala::GeyserwalaProvider;
 use smart_geyser_providers::geyserwala_mqtt::GeyserwalaMqttProvider;
 
@@ -60,90 +62,36 @@ async fn main() -> anyhow::Result<()> {
     apply_provider_overlay(&mut cfg);
     log_startup_config(&cfg, &config_path);
 
-    // Build geyser provider.
-    let geyser: Box<dyn GeyserProvider> = match cfg.geyser {
-        GeyserProviderConfig::Geyserwala(g) => Box::new(GeyserwalaProvider::new(g.into())?),
-        GeyserProviderConfig::GeyserwalaaMqtt(g) => {
-            Box::new(GeyserwalaMqttProvider::new(g.into()).await?)
-        }
-    };
-
-    let provider_meta = ProviderMeta {
-        geyser_name: geyser.name(),
-        system: geyser.system(),
-    };
-
-    // Load or create pattern store.
-    let pattern_store = {
-        let path = cfg.data_dir.join("pattern_store.json");
-        if !cfg.data_dir.as_os_str().is_empty() && path.exists() {
-            PatternStore::load_from_path(&path)
-                .unwrap_or_else(|_| PatternStore::new(cfg.engine.decay_factor))
-        } else {
-            PatternStore::new(cfg.engine.decay_factor)
-        }
-    };
-
-    // Align engine system type with the physical provider.
-    let mut engine_config = cfg.engine.clone();
-    engine_config.system = geyser.system();
-
-    // If the provider exposes its setpoint, read it now — it is authoritative
-    // over the config file so there is only one place to configure it.
-    let initial_setpoint = if geyser
-        .capabilities()
-        .contains(&GeyserCapability::SetpointControl)
-    {
-        match geyser.get_setpoint().await {
-            Ok(Some(sp)) => {
-                info!(
-                    device_setpoint_c = sp,
-                    config_setpoint_c = engine_config.setpoint_c,
-                    "device setpoint overrides config"
-                );
-                sp
-            }
-            Ok(None) => engine_config.setpoint_c,
-            Err(e) => {
-                warn!("could not read setpoint from device: {e:#} — using config value");
-                engine_config.setpoint_c
-            }
-        }
-    } else {
-        engine_config.setpoint_c
-    };
-
-    // Shared state and setpoint Arc (scheduler and API share the same instance).
+    let tick_notify = Arc::new(Notify::new());
     let shared = SharedState::new();
-    let setpoint_arc = Arc::new(RwLock::new(initial_setpoint));
-    let app_state = AppState::new(
-        shared.clone(),
-        provider_meta,
-        Arc::clone(&setpoint_arc),
-        engine_config.clone(),
-        cfg.tick_interval_secs,
-        cfg.data_dir.clone(),
-    );
-    let mut shutdown_rx = app_state.subscribe_shutdown();
 
-    let engine = DecisionEngine::new(engine_config, pattern_store, shared);
-    let detector = EventDetector::new(EventDetectorConfig::default());
-
-    let scheduler = Scheduler {
-        geyser,
-        engine,
-        detector,
-        app_state: app_state.clone(),
-        data_dir: cfg.data_dir,
-        setpoint_c: setpoint_arc,
+    let (app_state, maybe_scheduler) = if let Some(geyser_config) = cfg.geyser.take() {
+        let (state, sched) =
+            setup_configured(&cfg, geyser_config, shared, Arc::clone(&tick_notify)).await?;
+        (state, Some(sched))
+    } else {
+        warn!("no provider configured — running in unconfigured mode");
+        warn!("use the HA options flow or POST /api/provider-config to configure a provider");
+        let sp = Arc::new(RwLock::new(cfg.engine.setpoint_c));
+        let mut state = AppState::new(
+            shared,
+            ProviderMeta { geyser_name: "unconfigured", system: HeatingSystem::ElectricOnly },
+            sp,
+            cfg.engine.clone(),
+            cfg.tick_interval_secs,
+            cfg.data_dir.clone(),
+            tick_notify,
+        );
+        state.configured = false;
+        (state, None)
     };
 
-    let tick_interval = Duration::from_secs(u64::from(cfg.tick_interval_secs));
+    if let Some(scheduler) = maybe_scheduler {
+        let interval = Duration::from_secs(u64::from(cfg.tick_interval_secs));
+        tokio::spawn(async move { scheduler.run(interval).await; });
+    }
 
-    tokio::spawn(async move {
-        scheduler.run(tick_interval).await;
-    });
-
+    let mut shutdown_rx = app_state.subscribe_shutdown();
     let router = api::router()
         .with_state(app_state)
         .layer(tower_http::cors::CorsLayer::permissive())
@@ -165,6 +113,83 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+async fn setup_configured(
+    cfg: &ServiceConfig,
+    geyser_config: GeyserProviderConfig,
+    shared: SharedState,
+    tick_notify: Arc<Notify>,
+) -> anyhow::Result<(AppState, Scheduler)> {
+    let geyser = build_provider(geyser_config, Arc::clone(&tick_notify)).await?;
+    let mut engine_config = cfg.engine.clone();
+    engine_config.system = geyser.system();
+    let initial_setpoint = read_initial_setpoint(geyser.as_ref(), &engine_config).await;
+    let meta = ProviderMeta { geyser_name: geyser.name(), system: geyser.system() };
+    let pattern_store = load_pattern_store(&cfg.data_dir, engine_config.decay_factor);
+    let engine = DecisionEngine::new(engine_config.clone(), pattern_store, shared.clone());
+    let detector = EventDetector::new(EventDetectorConfig::default());
+    let setpoint_arc = Arc::new(RwLock::new(initial_setpoint));
+    let app_state = AppState::new(
+        shared,
+        meta,
+        Arc::clone(&setpoint_arc),
+        engine_config,
+        cfg.tick_interval_secs,
+        cfg.data_dir.clone(),
+        tick_notify,
+    );
+    let scheduler = Scheduler {
+        geyser,
+        engine,
+        detector,
+        app_state: app_state.clone(),
+        data_dir: cfg.data_dir.clone(),
+        setpoint_c: setpoint_arc,
+    };
+    Ok((app_state, scheduler))
+}
+
+async fn build_provider(
+    config: GeyserProviderConfig,
+    tick_notify: Arc<Notify>,
+) -> anyhow::Result<Box<dyn GeyserProvider>> {
+    match config {
+        GeyserProviderConfig::Geyserwala(g) => Ok(Box::new(GeyserwalaProvider::new(g.into())?)),
+        GeyserProviderConfig::GeyserwalaaMqtt(g) => {
+            Ok(Box::new(GeyserwalaMqttProvider::new(g.into(), tick_notify).await?))
+        }
+    }
+}
+
+async fn read_initial_setpoint(geyser: &dyn GeyserProvider, cfg: &EngineConfig) -> f32 {
+    if !geyser.capabilities().contains(&GeyserCapability::SetpointControl) {
+        return cfg.setpoint_c;
+    }
+    match geyser.get_setpoint().await {
+        Ok(Some(sp)) => {
+            info!(
+                device_setpoint_c = sp,
+                config_setpoint_c = cfg.setpoint_c,
+                "device setpoint overrides config"
+            );
+            sp
+        }
+        Ok(None) => cfg.setpoint_c,
+        Err(e) => {
+            warn!("could not read setpoint from device: {e:#} — using config value");
+            cfg.setpoint_c
+        }
+    }
+}
+
+fn load_pattern_store(data_dir: &std::path::Path, decay_factor: f32) -> PatternStore {
+    let path = data_dir.join("pattern_store.json");
+    if !data_dir.as_os_str().is_empty() && path.exists() {
+        PatternStore::load_from_path(&path).unwrap_or_else(|_| PatternStore::new(decay_factor))
+    } else {
+        PatternStore::new(decay_factor)
+    }
+}
+
 fn apply_provider_overlay(cfg: &mut ServiceConfig) {
     let overlay_path = cfg.data_dir.join("provider-config.json");
     if !overlay_path.exists() {
@@ -173,7 +198,7 @@ fn apply_provider_overlay(cfg: &mut ServiceConfig) {
     match ProviderConfigOverlay::load(&overlay_path) {
         Ok(overlay) => {
             info!("loaded provider config from {}", overlay_path.display());
-            cfg.geyser = overlay.geyser;
+            cfg.geyser = Some(overlay.geyser);
         }
         Err(e) => warn!("ignoring invalid provider-config.json: {e:#}"),
     }

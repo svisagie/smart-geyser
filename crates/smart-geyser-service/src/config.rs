@@ -62,7 +62,8 @@ pub struct ServiceConfig {
     #[serde(default)]
     pub data_dir: PathBuf,
 
-    pub geyser: GeyserProviderConfig,
+    #[serde(default)]
+    pub geyser: Option<GeyserProviderConfig>,
 
     #[serde(default)]
     pub engine: EngineConfig,
@@ -227,7 +228,7 @@ base_url = "http://192.168.1.50"
     #[test]
     fn minimal_toml_parses() {
         let cfg: ServiceConfig = toml::from_str(MINIMAL_TOML).unwrap();
-        match &cfg.geyser {
+        match cfg.geyser.as_ref().unwrap() {
             GeyserProviderConfig::Geyserwala(g) => {
                 assert_eq!(g.base_url, "http://192.168.1.50");
                 assert_eq!(g.element_kw, 3.0);
@@ -259,7 +260,7 @@ setpoint_c = 62.0
         let cfg: ServiceConfig = toml::from_str(toml).unwrap();
         assert_eq!(cfg.tick_interval_secs, 30);
         assert_eq!(cfg.engine.setpoint_c, 62.0);
-        match &cfg.geyser {
+        match cfg.geyser.as_ref().unwrap() {
             GeyserProviderConfig::Geyserwala(g) => {
                 assert_eq!(g.token, Some("abc123".to_string()));
                 assert_eq!(g.element_kw, 4.0);
@@ -269,9 +270,9 @@ setpoint_c = 62.0
     }
 
     #[test]
-    fn missing_geyser_section_errors() {
-        let result: Result<ServiceConfig, _> = toml::from_str("tick_interval_secs = 30");
-        assert!(result.is_err());
+    fn missing_geyser_section_is_none() {
+        let cfg: ServiceConfig = toml::from_str("tick_interval_secs = 30").unwrap();
+        assert!(cfg.geyser.is_none());
     }
 
     #[test]
@@ -297,7 +298,7 @@ setpoint_c = 62.0
         let cfg: ServiceConfig = serde_json::from_str(json).unwrap();
         assert_eq!(cfg.tick_interval_secs, 60);
         assert_eq!(cfg.engine.setpoint_c, 60.0);
-        match &cfg.geyser {
+        match cfg.geyser.as_ref().unwrap() {
             GeyserProviderConfig::Geyserwala(g) => {
                 assert_eq!(g.base_url, "http://192.168.1.50");
                 assert_eq!(g.element_kw, 3.0);

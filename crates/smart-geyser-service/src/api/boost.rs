@@ -32,6 +32,7 @@ pub async fn post_boost(
 
     let boost_until = Utc::now() + chrono::Duration::minutes(i64::from(body.duration_minutes));
     state.shared.set_boost_until(Some(boost_until)).await;
+    state.notify_tick();
 
     (
         StatusCode::OK,
@@ -42,6 +43,7 @@ pub async fn post_boost(
 
 pub async fn delete_boost(State(state): State<AppState>) -> impl IntoResponse {
     state.shared.set_boost_until(None).await;
+    state.notify_tick();
     Json(json!({"ok": true}))
 }
 
@@ -64,6 +66,7 @@ pub async fn post_setpoint(
         new_setpoint_c = body.temp_c,
         "setpoint updated via API"
     );
+    state.notify_tick();
     Json(json!({"ok": true, "setpoint_c": body.temp_c})).into_response()
 }
 
@@ -91,6 +94,7 @@ mod tests {
             smart_geyser_core::models::EngineConfig::default(),
             60,
             std::path::PathBuf::new(),
+            Arc::new(tokio::sync::Notify::new()),
         );
         TestServer::new(super::super::router().with_state(state))
     }

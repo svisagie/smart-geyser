@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
-use tokio::sync::{watch, RwLock};
+use tokio::sync::{watch, Notify, RwLock};
 
 use smart_geyser_core::models::{EngineConfig, GeyserState};
 use smart_geyser_core::shared_state::SharedState;
@@ -49,6 +49,10 @@ pub struct AppState {
     pub data_dir: PathBuf,
     /// Shutdown signal — POST /api/provider-config sends `true` to restart the service.
     shutdown_tx: Arc<watch::Sender<bool>>,
+    /// Fires after any event (MQTT message, API call) to wake the scheduler early.
+    pub tick_notify: Arc<Notify>,
+    /// False when no provider has been configured yet; scheduler is not running.
+    pub configured: bool,
 }
 
 impl AppState {
@@ -60,6 +64,7 @@ impl AppState {
         engine_config: EngineConfig,
         tick_interval_secs: u32,
         data_dir: PathBuf,
+        tick_notify: Arc<Notify>,
     ) -> Self {
         let (events_tx, _) = tokio::sync::broadcast::channel(32);
         let (shutdown_tx, _) = watch::channel(false);
@@ -74,6 +79,8 @@ impl AppState {
             last_status_event: Arc::new(RwLock::new(None)),
             data_dir,
             shutdown_tx: Arc::new(shutdown_tx),
+            tick_notify,
+            configured: true,
         }
     }
 
@@ -85,5 +92,10 @@ impl AppState {
     /// Signal the process to restart (write config first, then call this).
     pub fn trigger_shutdown(&self) {
         let _ = self.shutdown_tx.send(true);
+    }
+
+    /// Wake the scheduler immediately (used by API handlers and the MQTT background task).
+    pub fn notify_tick(&self) {
+        self.tick_notify.notify_one();
     }
 }

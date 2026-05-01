@@ -19,7 +19,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use chrono::Utc;
 use rumqttc::{AsyncClient, Event, MqttOptions, Packet, QoS};
-use tokio::sync::RwLock;
+use tokio::sync::{Notify, RwLock};
 use tracing::{debug, info, warn};
 
 use smart_geyser_core::models::GeyserState;
@@ -86,10 +86,13 @@ impl GeyserwalaMqttProvider {
     /// Connect to the MQTT broker, subscribe to stat topics, and start the
     /// background receive loop. Returns when the first subscription ACK arrives.
     ///
+    /// `tick_notify` is fired after each incoming MQTT publish so the scheduler
+    /// can react immediately rather than waiting for the next interval.
+    ///
     /// # Errors
     ///
     /// Returns an error if the initial subscription cannot be sent.
-    pub async fn new(config: GeyserwalaMqttConfig) -> anyhow::Result<Self> {
+    pub async fn new(config: GeyserwalaMqttConfig, tick_notify: Arc<Notify>) -> anyhow::Result<Self> {
         let mut opts = MqttOptions::new("smart-geyser", &config.broker_host, config.broker_port);
         opts.set_keep_alive(Duration::from_secs(30));
         if let (Some(user), Some(pass)) = (&config.username, &config.password) {
@@ -132,6 +135,8 @@ impl GeyserwalaMqttProvider {
                             "setpoint" => s.setpoint_c = raw.parse::<f32>().ok(),
                             _ => {}
                         }
+                        // Wake the scheduler immediately so it reacts to new state.
+                        tick_notify.notify_one();
                     }
                     Err(e) => {
                         warn!("MQTT connection error: {e:#}; retrying in 5 s");
