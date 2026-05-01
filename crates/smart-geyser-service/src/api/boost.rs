@@ -59,7 +59,11 @@ pub async fn post_setpoint(
 
     let old = *state.setpoint_c.read().await;
     *state.setpoint_c.write().await = body.temp_c;
-    info!(old_setpoint_c = old, new_setpoint_c = body.temp_c, "setpoint updated via API");
+    info!(
+        old_setpoint_c = old,
+        new_setpoint_c = body.temp_c,
+        "setpoint updated via API"
+    );
     Json(json!({"ok": true, "setpoint_c": body.temp_c})).into_response()
 }
 

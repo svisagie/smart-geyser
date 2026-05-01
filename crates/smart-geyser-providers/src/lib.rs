@@ -5,3 +5,4 @@
 //! `None` for the PV provider in the service to run without PV integration.
 
 pub mod geyserwala;
+pub mod geyserwala_mqtt;

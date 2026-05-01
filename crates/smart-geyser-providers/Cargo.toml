@@ -14,6 +14,7 @@ serde_json = { workspace = true }
 chrono = { workspace = true }
 tokio = { workspace = true }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+rumqttc = "0.24"
 tracing = { workspace = true }
 
 [dev-dependencies]

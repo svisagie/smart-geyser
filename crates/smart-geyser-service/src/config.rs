@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use smart_geyser_core::models::EngineConfig;
 use smart_geyser_providers::geyserwala::GeyserwalaConfig;
+use smart_geyser_providers::geyserwala_mqtt::GeyserwalaMqttConfig;
 
 // ---------------------------------------------------------------------------
 // Top-level
@@ -47,6 +48,7 @@ fn default_tick_interval() -> u32 {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum GeyserProviderConfig {
     Geyserwala(GeyserwalaTomlConfig),
+    GeyserwalaaMqtt(GeyserwalaaMqttTomlConfig),
 }
 
 /// TOML-friendly wrapper around `GeyserwalaConfig` (all fields optional
@@ -71,6 +73,45 @@ fn default_tank_volume_l() -> f32 {
 }
 fn default_timeout_secs() -> u64 {
     10
+}
+
+/// TOML config for the Geyserwala MQTT provider.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GeyserwalaaMqttTomlConfig {
+    pub broker_host: String,
+    #[serde(default = "default_mqtt_port")]
+    pub broker_port: u16,
+    #[serde(default = "default_topic_prefix")]
+    pub topic_prefix: String,
+    pub device_id: String,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    #[serde(default = "default_element_kw")]
+    pub element_kw: f32,
+    #[serde(default = "default_tank_volume_l")]
+    pub tank_volume_l: f32,
+}
+
+fn default_mqtt_port() -> u16 {
+    1883
+}
+fn default_topic_prefix() -> String {
+    "geyserwala".to_string()
+}
+
+impl From<GeyserwalaaMqttTomlConfig> for GeyserwalaMqttConfig {
+    fn from(c: GeyserwalaaMqttTomlConfig) -> Self {
+        Self {
+            broker_host: c.broker_host,
+            broker_port: c.broker_port,
+            topic_prefix: c.topic_prefix,
+            device_id: c.device_id,
+            username: c.username,
+            password: c.password,
+            element_kw: c.element_kw,
+            tank_volume_l: c.tank_volume_l,
+        }
+    }
 }
 
 impl From<GeyserwalaTomlConfig> for GeyserwalaConfig {
@@ -155,6 +196,7 @@ base_url = "http://192.168.1.50"
                 assert_eq!(g.element_kw, 3.0);
                 assert_eq!(g.tank_volume_l, 150.0);
             }
+            _ => panic!("expected Geyserwala variant"),
         }
         assert_eq!(cfg.tick_interval_secs, 60);
     }
@@ -185,6 +227,7 @@ setpoint_c = 62.0
                 assert_eq!(g.token, Some("abc123".to_string()));
                 assert_eq!(g.element_kw, 4.0);
             }
+            _ => panic!("expected Geyserwala variant"),
         }
     }
 
@@ -222,6 +265,7 @@ setpoint_c = 62.0
                 assert_eq!(g.base_url, "http://192.168.1.50");
                 assert_eq!(g.element_kw, 3.0);
             }
+            _ => panic!("expected Geyserwala variant"),
         }
     }
 }

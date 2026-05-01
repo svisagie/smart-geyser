@@ -7,7 +7,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.0.3"
+version = "1.0.4"
 edition = "2021"
 rust-version = "1.88"
 license = "MIT"
@@ -29,6 +29,9 @@ thiserror = "1"
 
 # Observability
 tracing = "0.1"
+
+# Async streams
+tokio-stream = { version = "0.1", features = ["sync"] }
 
 # Test utilities
 pretty_assertions = "1"

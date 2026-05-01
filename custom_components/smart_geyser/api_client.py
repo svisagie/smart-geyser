@@ -1,9 +1,10 @@
 """Async HTTP client for the smart-geyser-service REST API."""
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, AsyncGenerator
 
 import aiohttp
 
@@ -184,3 +185,23 @@ class SmartGeyserClient:
     async def post_setpoint(self, temp_c: float) -> None:
         """Update the heating setpoint (40–75 °C)."""
         await self._post("/api/setpoint", {"temp_c": temp_c})
+
+    async def stream_status(self) -> AsyncGenerator[GeyserStatus, None]:
+        """Yield GeyserStatus objects from the SSE /api/events endpoint."""
+        sse_timeout = aiohttp.ClientTimeout(total=None, connect=10, sock_read=None)
+        try:
+            async with self._session.get(
+                f"{self._base}/api/events",
+                timeout=sse_timeout,
+            ) as resp:
+                async for raw_line in resp.content:
+                    line = raw_line.decode("utf-8").strip()
+                    if line.startswith("data:"):
+                        payload = line[5:].strip()
+                        if payload:
+                            try:
+                                yield GeyserStatus.from_dict(json.loads(payload))
+                            except (json.JSONDecodeError, KeyError, TypeError):
+                                pass
+        except aiohttp.ClientConnectionError as exc:
+            raise CannotConnect(f"SSE connection lost: {exc}") from exc

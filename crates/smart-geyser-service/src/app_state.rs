@@ -39,6 +39,11 @@ pub struct AppState {
     pub engine_config: EngineConfig,
     /// Tick interval in seconds.
     pub tick_interval_secs: u32,
+    /// Broadcast channel: serialised JSON of the latest status, sent each tick.
+    /// SSE clients subscribe via `events_tx.subscribe()`.
+    pub events_tx: tokio::sync::broadcast::Sender<String>,
+    /// Most recent broadcast payload — sent immediately to new SSE connections.
+    pub last_status_event: Arc<RwLock<Option<String>>>,
 }
 
 impl AppState {
@@ -50,6 +55,7 @@ impl AppState {
         engine_config: EngineConfig,
         tick_interval_secs: u32,
     ) -> Self {
+        let (events_tx, _) = tokio::sync::broadcast::channel(32);
         Self {
             shared,
             snapshot: Arc::new(RwLock::new(TickSnapshot::default())),
@@ -57,6 +63,8 @@ impl AppState {
             setpoint_c,
             engine_config,
             tick_interval_secs,
+            events_tx,
+            last_status_event: Arc::new(RwLock::new(None)),
         }
     }
 }

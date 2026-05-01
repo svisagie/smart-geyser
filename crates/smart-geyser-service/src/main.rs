@@ -17,6 +17,7 @@ use smart_geyser_core::pattern_store::PatternStore;
 use smart_geyser_core::provider::{GeyserCapability, GeyserProvider};
 use smart_geyser_core::shared_state::SharedState;
 use smart_geyser_providers::geyserwala::GeyserwalaProvider;
+use smart_geyser_providers::geyserwala_mqtt::GeyserwalaMqttProvider;
 
 use app_state::{AppState, ProviderMeta};
 use config::{GeyserProviderConfig, ServiceConfig};
@@ -77,6 +78,9 @@ async fn main() -> anyhow::Result<()> {
     // Build geyser provider.
     let geyser: Box<dyn GeyserProvider> = match cfg.geyser {
         GeyserProviderConfig::Geyserwala(g) => Box::new(GeyserwalaProvider::new(g.into())?),
+        GeyserProviderConfig::GeyserwalaaMqtt(g) => {
+            Box::new(GeyserwalaMqttProvider::new(g.into()).await?)
+        }
     };
 
     let provider_meta = ProviderMeta {
@@ -101,26 +105,28 @@ async fn main() -> anyhow::Result<()> {
 
     // If the provider exposes its setpoint, read it now — it is authoritative
     // over the config file so there is only one place to configure it.
-    let initial_setpoint =
-        if geyser.capabilities().contains(&GeyserCapability::SetpointControl) {
-            match geyser.get_setpoint().await {
-                Ok(Some(sp)) => {
-                    info!(
-                        device_setpoint_c = sp,
-                        config_setpoint_c = engine_config.setpoint_c,
-                        "device setpoint overrides config"
-                    );
-                    sp
-                }
-                Ok(None) => engine_config.setpoint_c,
-                Err(e) => {
-                    warn!("could not read setpoint from device: {e:#} — using config value");
-                    engine_config.setpoint_c
-                }
+    let initial_setpoint = if geyser
+        .capabilities()
+        .contains(&GeyserCapability::SetpointControl)
+    {
+        match geyser.get_setpoint().await {
+            Ok(Some(sp)) => {
+                info!(
+                    device_setpoint_c = sp,
+                    config_setpoint_c = engine_config.setpoint_c,
+                    "device setpoint overrides config"
+                );
+                sp
             }
-        } else {
-            engine_config.setpoint_c
-        };
+            Ok(None) => engine_config.setpoint_c,
+            Err(e) => {
+                warn!("could not read setpoint from device: {e:#} — using config value");
+                engine_config.setpoint_c
+            }
+        }
+    } else {
+        engine_config.setpoint_c
+    };
 
     // Shared state and setpoint Arc (scheduler and API share the same instance).
     let shared = SharedState::new();
