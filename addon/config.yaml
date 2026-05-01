@@ -1,5 +1,5 @@
 name: Smart Geyser Controller
-version: "1.0.2"
+version: "1.0.3"
 slug: smart_geyser
 hostname: smart-geyser
 description: Pattern-learning hot-water geyser controller with optional PV opportunity heating.
