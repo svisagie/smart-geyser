@@ -13,7 +13,6 @@ from .coordinator import SmartGeyserCoordinator
 PLATFORMS = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
-    Platform.NUMBER,
     Platform.SWITCH,
 ]
 
