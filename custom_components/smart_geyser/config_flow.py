@@ -5,25 +5,9 @@ import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.selector import (
-    NumberSelector,
-    NumberSelectorConfig,
-    NumberSelectorMode,
-    SelectOption,
-    SelectSelector,
-    SelectSelectorConfig,
-    TextSelector,
-    TextSelectorConfig,
-    TextSelectorType,
-)
 
 from .api_client import CannotConnect, SmartGeyserClient
 from .const import CONF_HOST, CONF_PORT, DEFAULT_HOST, DEFAULT_PORT, DOMAIN
-
-_PROVIDER_OPTIONS = [
-    SelectOption(value="geyserwala", label="Geyserwala (REST / HTTP)"),
-    SelectOption(value="geyserwala_mqtt", label="Geyserwala (MQTT)"),
-]
 
 
 class SmartGeyserConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -108,8 +92,8 @@ class SmartGeyserOptionsFlow(OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Required("provider_type", default=current_type): SelectSelector(
-                        SelectSelectorConfig(options=_PROVIDER_OPTIONS)
+                    vol.Required("provider_type", default=current_type): vol.In(
+                        ["geyserwala", "geyserwala_mqtt"]
                     ),
                 }
             ),
@@ -129,8 +113,8 @@ class SmartGeyserOptionsFlow(OptionsFlow):
                         "type": "geyserwala",
                         "base_url": user_input["base_url"],
                         "token": user_input.get("token") or None,
-                        "element_kw": user_input["element_kw"],
-                        "tank_volume_l": user_input["tank_volume_l"],
+                        "element_kw": float(user_input["element_kw"]),
+                        "tank_volume_l": float(user_input["tank_volume_l"]),
                         "timeout_secs": 10,
                     }
                 )
@@ -144,24 +128,14 @@ class SmartGeyserOptionsFlow(OptionsFlow):
             step_id="rest_config",
             data_schema=vol.Schema(
                 {
-                    vol.Required(
-                        "base_url", default=c.get("base_url", "http://")
-                    ): TextSelector(TextSelectorConfig(type=TextSelectorType.URL)),
+                    vol.Required("base_url", default=c.get("base_url", "http://")): str,
                     vol.Optional("token", default=c.get("token") or ""): str,
                     vol.Required(
                         "element_kw", default=c.get("element_kw", 3.0)
-                    ): NumberSelector(
-                        NumberSelectorConfig(
-                            min=0.5, max=10.0, step=0.1, unit_of_measurement="kW"
-                        )
-                    ),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
                     vol.Required(
                         "tank_volume_l", default=c.get("tank_volume_l", 150.0)
-                    ): NumberSelector(
-                        NumberSelectorConfig(
-                            min=50, max=500, step=10, unit_of_measurement="L"
-                        )
-                    ),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=50, max=500)),
                 }
             ),
             errors=errors,
@@ -185,8 +159,8 @@ class SmartGeyserOptionsFlow(OptionsFlow):
                         "topic_prefix": user_input.get("topic_prefix") or "geyserwala",
                         "username": user_input.get("username") or None,
                         "password": user_input.get("password") or None,
-                        "element_kw": user_input["element_kw"],
-                        "tank_volume_l": user_input["tank_volume_l"],
+                        "element_kw": float(user_input["element_kw"]),
+                        "tank_volume_l": float(user_input["tank_volume_l"]),
                     }
                 )
                 return self.async_create_entry(title="", data={})
@@ -199,16 +173,10 @@ class SmartGeyserOptionsFlow(OptionsFlow):
             step_id="mqtt_config",
             data_schema=vol.Schema(
                 {
-                    vol.Required(
-                        "broker_host", default=c.get("broker_host", "")
-                    ): str,
+                    vol.Required("broker_host", default=c.get("broker_host", "")): str,
                     vol.Required(
                         "broker_port", default=c.get("broker_port", 1883)
-                    ): NumberSelector(
-                        NumberSelectorConfig(
-                            min=1, max=65535, step=1, mode=NumberSelectorMode.BOX
-                        )
-                    ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
                     vol.Required("device_id", default=c.get("device_id", "")): str,
                     vol.Required(
                         "topic_prefix", default=c.get("topic_prefix", "geyserwala")
@@ -217,18 +185,10 @@ class SmartGeyserOptionsFlow(OptionsFlow):
                     vol.Optional("password", default=c.get("password") or ""): str,
                     vol.Required(
                         "element_kw", default=c.get("element_kw", 3.0)
-                    ): NumberSelector(
-                        NumberSelectorConfig(
-                            min=0.5, max=10.0, step=0.1, unit_of_measurement="kW"
-                        )
-                    ),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.5, max=10.0)),
                     vol.Required(
                         "tank_volume_l", default=c.get("tank_volume_l", 150.0)
-                    ): NumberSelector(
-                        NumberSelectorConfig(
-                            min=50, max=500, step=10, unit_of_measurement="L"
-                        )
-                    ),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=50, max=500)),
                 }
             ),
             errors=errors,

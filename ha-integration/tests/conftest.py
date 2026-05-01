@@ -20,7 +20,6 @@ _HA_MODULES = [
     "homeassistant.components.sensor",
     "homeassistant.components.binary_sensor",
     "homeassistant.components.switch",
-    "homeassistant.helpers.selector",
     "homeassistant.util",
     "homeassistant.util.dt",
     "voluptuous",
