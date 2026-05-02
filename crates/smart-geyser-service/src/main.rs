@@ -66,8 +66,14 @@ async fn main() -> anyhow::Result<()> {
     let shared = SharedState::new();
 
     let (app_state, maybe_scheduler) = if let Some(geyser_config) = overlay.geyser.clone() {
-        let (state, sched) =
-            setup_configured(&cfg.data_dir, &overlay, geyser_config, shared, Arc::clone(&tick_notify)).await?;
+        let (state, sched) = setup_configured(
+            &cfg.data_dir,
+            &overlay,
+            geyser_config,
+            shared,
+            Arc::clone(&tick_notify),
+        )
+        .await?;
         (state, Some(sched))
     } else {
         warn!("no provider configured — running in unconfigured mode");
@@ -75,7 +81,10 @@ async fn main() -> anyhow::Result<()> {
         let sp = Arc::new(RwLock::new(overlay.engine.setpoint_c));
         let mut state = AppState::new(
             shared,
-            ProviderMeta { geyser_name: "unconfigured", system: HeatingSystem::ElectricOnly },
+            ProviderMeta {
+                geyser_name: "unconfigured",
+                system: HeatingSystem::ElectricOnly,
+            },
             sp,
             overlay.engine.to_engine_config(HeatingSystem::ElectricOnly),
             overlay.engine.tick_interval_secs,
@@ -94,7 +103,9 @@ async fn main() -> anyhow::Result<()> {
 
     if let Some(scheduler) = maybe_scheduler {
         let interval = Duration::from_secs(u64::from(overlay.engine.tick_interval_secs));
-        tokio::spawn(async move { scheduler.run(interval).await; });
+        tokio::spawn(async move {
+            scheduler.run(interval).await;
+        });
     }
 
     let mut shutdown_rx = app_state.subscribe_shutdown();
@@ -129,7 +140,10 @@ async fn setup_configured(
     let geyser = build_provider(geyser_config, Arc::clone(&tick_notify)).await?;
     let engine_config = overlay.engine.to_engine_config(geyser.system());
     let initial_setpoint = read_initial_setpoint(geyser.as_ref(), &engine_config).await;
-    let meta = ProviderMeta { geyser_name: geyser.name(), system: geyser.system() };
+    let meta = ProviderMeta {
+        geyser_name: geyser.name(),
+        system: geyser.system(),
+    };
     let pattern_store = load_pattern_store(data_dir, engine_config.decay_factor);
     let engine = DecisionEngine::new(engine_config.clone(), pattern_store, shared.clone());
     let detector = EventDetector::new(EventDetectorConfig::default());
@@ -160,19 +174,26 @@ async fn build_provider(
 ) -> anyhow::Result<Box<dyn GeyserProvider>> {
     match config {
         GeyserProviderConfig::Geyserwala(g) => Ok(Box::new(GeyserwalaProvider::new(g.into())?)),
-        GeyserProviderConfig::GeyserwalaaMqtt(g) => {
-            Ok(Box::new(GeyserwalaMqttProvider::new(g.into(), tick_notify).await?))
-        }
+        GeyserProviderConfig::GeyserwalaaMqtt(g) => Ok(Box::new(
+            GeyserwalaMqttProvider::new(g.into(), tick_notify).await?,
+        )),
     }
 }
 
 async fn read_initial_setpoint(geyser: &dyn GeyserProvider, cfg: &EngineConfig) -> f32 {
-    if !geyser.capabilities().contains(&GeyserCapability::SetpointControl) {
+    if !geyser
+        .capabilities()
+        .contains(&GeyserCapability::SetpointControl)
+    {
         return cfg.setpoint_c;
     }
     match geyser.get_setpoint().await {
         Ok(Some(sp)) => {
-            info!(device_setpoint_c = sp, config_setpoint_c = cfg.setpoint_c, "device setpoint overrides config");
+            info!(
+                device_setpoint_c = sp,
+                config_setpoint_c = cfg.setpoint_c,
+                "device setpoint overrides config"
+            );
             sp
         }
         Ok(None) => cfg.setpoint_c,
@@ -207,7 +228,10 @@ pub fn load_overlay(data_dir: &Path) -> ServiceOverlay {
 }
 
 fn log_startup(cfg: &ServiceConfig, config_path: &Path, overlay: &ServiceOverlay) {
-    info!("=== Smart Geyser Controller v{} ===", env!("CARGO_PKG_VERSION"));
+    info!(
+        "=== Smart Geyser Controller v{} ===",
+        env!("CARGO_PKG_VERSION")
+    );
     info!(path = %config_path.display(), "config loaded");
     info!(addr = %cfg.listen_addr, data_dir = %cfg.data_dir.display(), "service");
     info!(
@@ -236,6 +260,8 @@ async fn shutdown_signal() {
     }
     #[cfg(not(unix))]
     {
-        tokio::signal::ctrl_c().await.expect("failed to listen for ctrl-c");
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to listen for ctrl-c");
     }
 }

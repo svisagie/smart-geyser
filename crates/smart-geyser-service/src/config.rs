@@ -92,15 +92,33 @@ impl EngineSettings {
     }
 }
 
-fn default_setpoint_c() -> f32 { 60.0 }
-fn default_hysteresis_c() -> f32 { 4.0 }
-fn default_preheat_threshold() -> f32 { 0.40 }
-fn default_late_use_threshold() -> f32 { 0.15 }
-fn default_cutoff_buffer_min() -> u32 { 30 }
-fn default_safety_margin_min() -> u32 { 20 }
-fn default_decay_factor() -> f32 { 0.995 }
-fn default_legionella_interval_days() -> u32 { 7 }
-fn default_tick_interval() -> u32 { 60 }
+fn default_setpoint_c() -> f32 {
+    60.0
+}
+fn default_hysteresis_c() -> f32 {
+    4.0
+}
+fn default_preheat_threshold() -> f32 {
+    0.40
+}
+fn default_late_use_threshold() -> f32 {
+    0.15
+}
+fn default_cutoff_buffer_min() -> u32 {
+    30
+}
+fn default_safety_margin_min() -> u32 {
+    20
+}
+fn default_decay_factor() -> f32 {
+    0.995
+}
+fn default_legionella_interval_days() -> u32 {
+    7
+}
+fn default_tick_interval() -> u32 {
+    60
+}
 
 // ---------------------------------------------------------------------------
 // Service overlay — the single file that the API writes to persist all
@@ -221,9 +239,15 @@ pub struct GeyserwalaTomlConfig {
     pub timeout_secs: u64,
 }
 
-fn default_element_kw() -> f32 { 3.0 }
-fn default_tank_volume_l() -> f32 { 150.0 }
-fn default_timeout_secs() -> u64 { 10 }
+fn default_element_kw() -> f32 {
+    3.0
+}
+fn default_tank_volume_l() -> f32 {
+    150.0
+}
+fn default_timeout_secs() -> u64 {
+    10
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GeyserwalaaMqttTomlConfig {
@@ -241,8 +265,12 @@ pub struct GeyserwalaaMqttTomlConfig {
     pub tank_volume_l: f32,
 }
 
-fn default_mqtt_port() -> u16 { 1883 }
-fn default_topic_prefix() -> String { "geyserwala".to_string() }
+fn default_mqtt_port() -> u16 {
+    1883
+}
+fn default_topic_prefix() -> String {
+    "geyserwala".to_string()
+}
 
 impl From<GeyserwalaaMqttTomlConfig> for GeyserwalaMqttConfig {
     fn from(c: GeyserwalaaMqttTomlConfig) -> Self {
@@ -330,7 +358,10 @@ mod tests {
                 tank_volume_l: 150.0,
                 timeout_secs: 10,
             })),
-            engine: EngineSettings { setpoint_c: 65.0, ..EngineSettings::default() },
+            engine: EngineSettings {
+                setpoint_c: 65.0,
+                ..EngineSettings::default()
+            },
             read_only_mode: false,
         };
         let json = serde_json::to_string(&overlay).unwrap();

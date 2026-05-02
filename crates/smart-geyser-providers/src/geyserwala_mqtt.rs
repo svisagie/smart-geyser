@@ -92,7 +92,10 @@ impl GeyserwalaMqttProvider {
     /// # Errors
     ///
     /// Returns an error if the initial subscription cannot be sent.
-    pub async fn new(config: GeyserwalaMqttConfig, tick_notify: Arc<Notify>) -> anyhow::Result<Self> {
+    pub async fn new(
+        config: GeyserwalaMqttConfig,
+        tick_notify: Arc<Notify>,
+    ) -> anyhow::Result<Self> {
         let mut opts = MqttOptions::new("smart-geyser", &config.broker_host, config.broker_port);
         opts.set_keep_alive(Duration::from_secs(30));
         if let (Some(user), Some(pass)) = (&config.username, &config.password) {

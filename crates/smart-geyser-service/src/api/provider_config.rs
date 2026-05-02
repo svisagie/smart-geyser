@@ -62,5 +62,8 @@ pub async fn post_provider_config(
     }
     info!("provider config saved — signalling graceful restart");
     state.trigger_shutdown();
-    (StatusCode::OK, Json(json!({"ok": true, "restart_required": true})))
+    (
+        StatusCode::OK,
+        Json(json!({"ok": true, "restart_required": true})),
+    )
 }

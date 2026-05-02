@@ -77,5 +77,8 @@ pub async fn post_engine_config(
     }
     info!("engine config saved — signalling graceful restart");
     state.trigger_shutdown();
-    (StatusCode::OK, Json(json!({"ok": true, "restart_required": true})))
+    (
+        StatusCode::OK,
+        Json(json!({"ok": true, "restart_required": true})),
+    )
 }
