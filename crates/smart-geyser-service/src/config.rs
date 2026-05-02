@@ -118,6 +118,10 @@ pub struct ServiceOverlay {
     /// Engine / scheduler settings; uses spec defaults when absent.
     #[serde(default)]
     pub engine: EngineSettings,
+    /// When true the scheduler observes but never actuates the element.
+    /// Persisted so the mode survives restarts.
+    #[serde(default)]
+    pub read_only_mode: bool,
 }
 
 impl ServiceOverlay {
@@ -327,6 +331,7 @@ mod tests {
                 timeout_secs: 10,
             })),
             engine: EngineSettings { setpoint_c: 65.0, ..EngineSettings::default() },
+            read_only_mode: false,
         };
         let json = serde_json::to_string(&overlay).unwrap();
         let back: ServiceOverlay = serde_json::from_str(&json).unwrap();

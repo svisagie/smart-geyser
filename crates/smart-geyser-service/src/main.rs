@@ -86,6 +86,12 @@ async fn main() -> anyhow::Result<()> {
         (state, None)
     };
 
+    // Restore persisted read-only mode before starting the scheduler.
+    if overlay.read_only_mode {
+        app_state.shared.set_read_only(true).await;
+        info!("read-only mode restored from overlay");
+    }
+
     if let Some(scheduler) = maybe_scheduler {
         let interval = Duration::from_secs(u64::from(overlay.engine.tick_interval_secs));
         tokio::spawn(async move { scheduler.run(interval).await; });
